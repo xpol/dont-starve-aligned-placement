@@ -1,38 +1,54 @@
 local CAPY_DLC, IsDLCEnabled = GLOBAL.CAPY_DLC, GLOBAL.IsDLCEnabled
 local DLC002 = IsDLCEnabled(CAPY_DLC)
 
-local next, Vector3, GetPlayer, GetWorld = GLOBAL.next, GLOBAL.Vector3,GLOBAL.GetPlayer, GLOBAL.GetWorld
+local unpack, Vector3, GetPlayer, GetWorld = table.unpack or GLOBAL.unpack, GLOBAL.Vector3,GLOBAL.GetPlayer, GLOBAL.GetWorld
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
 local SNAP, ALIGN = 0.5, 0.1
 
+local function OnlyPrefab(prefab)
+	return function(inst)
+		return inst.prefab == prefab
+	end
+end
+
+local function PrefabMatch(pattern)
+	return function(inst)
+		return inst.prefab:match(pattern) ~= nil
+	end
+end
+
+local function PrefabStatus(prefab, status)
+	return function(inst)
+		local inspectable = inst.components.inspectable
+		return inst.prefab == prefab and inspectable and inspectable:GetStatus() == status
+	end
+end
 
 local SNAP_INFO = {
-	-- placer, deployable,  snap_to, snap_to, ...
+	{OnlyPrefab('berrybush'), 'dug_berrybush_placer', 'dug_berrybush'},
+	{OnlyPrefab('berrybush2'), 'dug_berrybush2_placer', 'dug_berrybush2'},
+	{OnlyPrefab('sapling'), 'dug_sapling_placer', 'dug_sapling'},
+	{OnlyPrefab('grass'), 'dug_grass_placer', 'dug_grass'},
+	{OnlyPrefab('marsh_bush'), 'dug_marsh_bush_placer', 'dug_marsh_bush'},
 
-	{'berrybush', placer = 'dug_berrybush_placer', deployable = 'dug_berrybush'},
-	{'berrybush2', placer = 'dug_berrybush2_placer', deployable = 'dug_berrybush2'},
-	{'sapling', placer = 'dug_sapling_placer', deployable = 'dug_sapling'},
-	{'grass', placer = 'dug_grass_placer', deployable = 'dug_grass'},
-	{'marsh_bush', placer = 'dug_marsh_bush_placer', deployable = 'dug_marsh_bush'},
+	{PrefabMatch('^.+_farmplot$'), 'farmplot_placer'},
+	{OnlyPrefab('slow_farmplot'), 'slow_farmplot_placer'},
+	{OnlyPrefab('fast_farmplot'), 'fast_farmplot_placer'},
+	{OnlyPrefab('ashfarmplot'), 'ashfarmplot_placer'},
 
-	{'slow_farmplot', 'fast_farmplot', placer = 'farmplot_placer'},
-	{'slow_farmplot', placer = 'slow_farmplot_placer'},
-	{'fast_farmplot', placer = 'fast_farmplot_placer'},
-	{'ashfarmplot', placer = 'ashfarmplot_placer'},
-
-	{'', placer = 'pinecone_placer'}
+	{PrefabStatus('pinecone', 'PLANTED'), 'pinecone_placer', 'pinecone'},
+	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', ''}
 }
 
 local function GenerateLookups(infos)
 	local placers = {}
 	local deployables = {}
 	for _, v in ipairs(infos) do
-		local lookup = {}
-		for i=1, #v do lookup[v[i]] = true end
-		if v.placer then placers[v.placer] = lookup end
-		if v.deployable then deployables[v.deployable] = lookup end
+		local checker, placer, deployable = unpack(v)
+		placers[placer] = checker
+		if deployable then deployables[deployable] = checker end
 	end
 	return placers, deployables
 end
@@ -44,60 +60,51 @@ local function Align(v, step)
 	return (v + step/2) - (v % step)
 end
 
-local function DistanceSquare(e, cx, cz)
-	local x, _, z = e.Transform:GetWorldPosition()
-	local dx, dz = cx - x, cz - z
-	return dx*dx + dz*dz
+local function DistanceAxis(axis, a, b)
+	return math.abs(a[axis] - b[axis])
 end
 
-local function NearestNeighbor(cx, cy, cz, required_neighbors)
-	local entities = GLOBAL.TheSim:FindEntities(cx, cy, cz, 20)
-	local target, dsq = nil, math.huge
+local function NearestAtAxis(axis, base, can_snap)
+  local x, y, z = base:Get()
+	local entities = GLOBAL.TheSim:FindEntities(x, y, z, 20)
+	local target, d = nil, math.huge
 	for _, e in ipairs(entities) do
-		if required_neighbors[e.prefab] then
-			local newdsq = DistanceSquare(e, cx, cz)
-			if not target or dsq > newdsq then
-				target, dsq = e, newdsq
+		if can_snap(e) then
+			local newd = DistanceAxis(axis, e:GetPosition(), base)
+			if not target or d > newd then
+				target, d = e, newd
 			end
 		end
 	end
-	return target
+	return target, d
 end
 
-local function SnapToNeighbor(position, neighbors)
-	if not neighbors or not next(neighbors) then return nil, false end
-	if not position then return false end
+local function SnapAxis(axis, position, can_snap)
+	local t, d = NearestAtAxis(axis, position, can_snap)
 
-	local cx, cy, cz = position:Get()
-	local target = NearestNeighbor(cx, cy, cz, neighbors)
-
-	if target then
-		local x, _, z = target.Transform:GetWorldPosition()
-		local dx, dz = math.abs(cx - x), math.abs(cz - z)
-		if dx < SNAP or dz < SNAP then
-			if dx < dz then
-				cx, cz = x, Align(cz, ALIGN)
-			else
-				cx, cz = Align(cx, ALIGN), z
-			end
-			print(('Snap to %s at (%0.2f, %0.2f)'):format(target.prefab, cx, cz))
-			return true, Vector3(cx, cy, cz)
-		end
-		return nil, position
+	if t and d < SNAP then
+      return t:GetPosition()[axis]
 	end
-
-	return true, Vector3(Align(position.x, ALIGN), position.y, Align(position.z, ALIGN))
+	return Align(position[axis], ALIGN)
 end
+
+local function Snap(position, can_snap)
+  if not can_snap or not position then return false end
+
+  local x = SnapAxis('x', position, can_snap)
+  local z = SnapAxis('z', position, can_snap)
+  return true, Vector3(x, position.y, z)
+end
+
 
 -- Patched version of Placer:OnUpdate with respect of self.selected_pos
-local function DLC001PlacerOnUpdate(self, dt)
-	print('DLC001PlacerOnUpdate:', self.inst.prefab)
-	local snap_to = PLACER_SNAPS[self.inst.prefab]
+local function DLC001PlacerOnUpdate(self, _)
+	local can_snap = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, snapped = SnapToNeighbor(pt, snap_to)
+		local ok, to = Snap(pt, can_snap)
 		if ok then
-			pt = snapped
+			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
 			pt = Vector3(GetWorld().Map:GetTileCenterPoint(pt:Get()))
 		elseif self.snap_to_meters then
@@ -106,9 +113,9 @@ local function DLC001PlacerOnUpdate(self, dt)
 		self.inst.Transform:SetPosition(pt:Get())
 	else
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(1,0,0))
-		local ok, snapped = SnapToNeighbor(p, snap_to)
+		local ok, to = Snap(p, can_snap)
 		if ok then
-			self.inst.Transform:SetPosition(snapped:Get())
+			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then
 			--Using an offset in this causes a bug in the terraformer functionality while using a controller.
 			local pt = Vector3(GetPlayer().entity:LocalToWorldSpace(0,0,0))
@@ -139,14 +146,14 @@ local function DLC001PlacerOnUpdate(self, dt)
 end
 
 
-local function DLC002PlacerOnUpdate(self, dt)
+local function DLC002PlacerOnUpdate(self, _)
 	print('DLC002PlacerOnUpdate:', self.inst.prefab)
-	local snap_to = PLACER_SNAPS[self.inst.prefab]
+	local can_snap = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, snapped = SnapToNeighbor(pt, snap_to)
+		local ok, to = Snap(pt, can_snap)
 		if ok then
-			pt = snapped
+			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
 			pt = Vector3(GetWorld().Map:GetTileCenterPoint(pt:Get()))
 		elseif self.snap_to_meters then
@@ -172,9 +179,9 @@ local function DLC002PlacerOnUpdate(self, dt)
 		end
 
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(offset,0,0))
-		local ok, snapped = SnapToNeighbor(p, snap_to)
+		local ok, to = Snap(p, can_snap)
 		if ok then
-			self.inst.Transform:SetPosition(snapped:Get())
+			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then
 			--Using an offset in this causes a bug in the terraformer functionality while using a controller.
 			local pt = Vector3(GetPlayer().entity:LocalToWorldSpace(0,0,0))
@@ -243,17 +250,15 @@ AddComponentPostInit("builder", function(builder)
 
 	function builder:CanBuildAtPoint(pt, recipe)
 		print('CanBuildAtPoint: recipe', recipe.name)
-		local snap_to = {[recipe.name] = true}
-		local ok, snapped = SnapToNeighbor(pt, snap_to)
-		if ok then pt = snapped end
+		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
+		if ok then pt = to end
 		return CanBuildAtPoint(self, pt, recipe)
 	end
 
 	local MakeRecipe = builder.MakeRecipe
 	function builder:MakeRecipe(recipe, pt, ...)
-		local snap_to = {[recipe.name] = true}
-		local ok, snapped = SnapToNeighbor(pt, snap_to)
-		if ok then pt = snapped end
+		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
+		if ok then pt = to end
 		return MakeRecipe(self, recipe, pt, ...)
 	end
 end)
@@ -261,14 +266,14 @@ end)
 AddComponentPostInit("deployable", function(deployable)
 	local CanDeploy, Deploy = deployable.CanDeploy, deployable.Deploy
 	function deployable:CanDeploy(pt)
-		local ok, snapped = SnapToNeighbor(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
-		if ok then pt = snapped end
+		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		if ok then pt = to end
 		return CanDeploy(self, pt)
 	end
 
 	function deployable:Deploy(pt, deployer)
-		local ok, snapped = SnapToNeighbor(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
-		if ok then pt = snapped end
+		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		if ok then pt = to end
 		return Deploy(self, pt, deployer)
 	end
 end)

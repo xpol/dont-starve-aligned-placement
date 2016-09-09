@@ -5,7 +5,7 @@ local unpack, Vector3, GetPlayer, GetWorld = table.unpack or GLOBAL.unpack, GLOB
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
-local SEARCH_RADIUS, SNAP, ALIGN = 12, 0.5, 0.1
+local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 12, 0.5, 0.1, 0.001
 
 local function OnlyPrefab(prefab)
 	return function(inst)
@@ -128,11 +128,48 @@ local function FindEntities(position, radius, fn)
 	return entities
 end
 
+local function DifferentSign(a, b)
+	return (a < 0 and b > 0) or (a > 0 and b < 0)
+end
+
+local function EvenSpaceAxis(axis, entities, position, middle)
+	local oaxis = OtherAxis[axis]
+	local diff = position[axis] - middle[axis]
+	if math.abs(diff) < EPSILON then
+		return nil,  Align(position[axis], ALIGN)
+	end
+
+	local t, lastd = nil, math.huge
+	for _, v in ipairs(entities) do
+		local vpos = v:GetPosition()
+		if math.abs(vpos[oaxis] - middle[oaxis]) < EPSILON then
+			local d = vpos[axis] - middle[axis]
+			local absd = math.abs(d)
+			if absd > EPSILON
+			and (not t or absd < lastd)
+			and DifferentSign(diff, d)
+			and math.abs(diff + d) < SNAP/2 then
+				t, lastd = v, absd
+			end
+		end
+	end
+	if not t then
+		return nil,  Align(position[axis], ALIGN)
+	end
+	return t, 2*middle[axis] - t:GetPosition()[axis]
+end
+
 local function Snap(position, can_snap)
 	if not can_snap or not position then return false end
 	local entities = FindEntities(position, SEARCH_RADIUS, can_snap)
 	local xt, x  = SnapAxis('x', entities, position)
 	local zt, z = SnapAxis('z', entities, position)
+
+	if xt ~= nil and zt == nil then
+		zt, z = EvenSpaceAxis('z', entities, position, xt:GetPosition())
+	elseif xt == nil and zt ~= nil then
+		xt, x = EvenSpaceAxis('x', entities, position, zt:GetPosition())
+	end
 
 	return true, Vector3(x, position.y, z), xt, zt
 end

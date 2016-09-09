@@ -5,7 +5,7 @@ local unpack, Vector3, GetPlayer, GetWorld = table.unpack or GLOBAL.unpack, GLOB
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
-local SEARCH_RAIDUS, SNAP, ALIGN = 12, 0.5, 0.1
+local SEARCH_RADIUS, SNAP, ALIGN = 12, 0.5, 0.1
 
 local function OnlyPrefab(prefab)
 	return function(inst)
@@ -66,11 +66,11 @@ end
 
 local OtherAxis = {x = 'z', z = 'x'}
 
-local function NearestAtAxis(axis, entities, base, can_snap)
+local function NearestAtAxis(axis, entities, base)
 	local target, d = nil, math.huge
 	local oaxis = OtherAxis[axis]
 	for _, e in ipairs(entities) do
-		if can_snap(e) and DistanceAxis(axis, e:GetPosition(), base) < SNAP then
+		if DistanceAxis(axis, e:GetPosition(), base) < SNAP then
 			local newd = DistanceAxis(oaxis, e:GetPosition(), base)
 			if not target or d > newd then
 				target, d = e, newd
@@ -80,8 +80,8 @@ local function NearestAtAxis(axis, entities, base, can_snap)
 	return target
 end
 
-local function SnapAxis(axis, entities, position, can_snap)
-	local t = NearestAtAxis(axis, entities, position, can_snap)
+local function SnapAxis(axis, entities, position)
+	local t = NearestAtAxis(axis, entities, position)
 	if not t then
 		return nil, Align(position[axis], ALIGN)
 	end
@@ -118,13 +118,23 @@ local function RemoveColors(inst)
 	end
 end
 
+local function FindEntities(position, radius, fn)
+	local entities = {}
+	local x, y, z = position:Get()
+	local nears = GLOBAL.TheSim:FindEntities(x, y, z, radius)
+	for _, v in ipairs(nears) do
+		if fn(v) then entities[#entities+1] = v end
+	end
+	return entities
+end
+
 local function Snap(position, can_snap)
 	if not can_snap or not position then return false end
-	local cx, cy, cz = position:Get()
-	local entities = GLOBAL.TheSim:FindEntities(cx, cy, cz, SEARCH_RAIDUS)
-	local xt, x  = SnapAxis('x', entities, position, can_snap)
-	local zt, z = SnapAxis('z', entities, position, can_snap)
-	return true, Vector3(x, cy, z), xt, zt
+	local entities = FindEntities(position, SEARCH_RADIUS, can_snap)
+	local xt, x  = SnapAxis('x', entities, position)
+	local zt, z = SnapAxis('z', entities, position)
+
+	return true, Vector3(x, position.y, z), xt, zt
 end
 
 local function SnapWithColorFX(placer, position, can_snap)

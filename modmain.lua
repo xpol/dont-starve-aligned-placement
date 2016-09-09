@@ -64,36 +64,68 @@ local function DistanceAxis(axis, a, b)
 	return math.abs(a[axis] - b[axis])
 end
 
-local function NearestAtAxis(axis, base, can_snap)
-  local x, y, z = base:Get()
-	local entities = GLOBAL.TheSim:FindEntities(x, y, z, 20)
+local OtherAxis = {x = 'z', z = 'x'}
+
+local function NearestAtAxis(axis, entities, base, can_snap)
 	local target, d = nil, math.huge
+	local oaxis = OtherAxis[axis]
 	for _, e in ipairs(entities) do
-		if can_snap(e) then
-			local newd = DistanceAxis(axis, e:GetPosition(), base)
+		if can_snap(e) and DistanceAxis(axis, e:GetPosition(), base) < SNAP then
+			local newd = DistanceAxis(oaxis, e:GetPosition(), base)
 			if not target or d > newd then
 				target, d = e, newd
 			end
 		end
 	end
-	return target, d
+	return target
 end
 
-local function SnapAxis(axis, position, can_snap)
-	local t, d = NearestAtAxis(axis, position, can_snap)
-
-	if t and d < SNAP then
-      return t:GetPosition()[axis]
+local function SnapAxis(axis, entities, position, can_snap)
+	local t = NearestAtAxis(axis, entities, position, can_snap)
+	if not t then
+		return nil, Align(position[axis], ALIGN)
 	end
-	return Align(position[axis], ALIGN)
+	return t, t:GetPosition()[axis]
 end
 
-local function Snap(position, can_snap)
-  if not can_snap or not position then return false end
+local RED, BLUE, ZERO = {.75,.25,.25,0}, {.25,.25,.75, 0}, {0,0,0,0}
 
-  local x = SnapAxis('x', position, can_snap)
-  local z = SnapAxis('z', position, can_snap)
-  return true, Vector3(x, position.y, z)
+local function SetAddColor(inst,color)
+	if inst then
+		inst.AnimState:SetAddColour(unpack(color))
+	end
+end
+
+local function UpdateColors(inst, xtarget, ztarget)
+	if not inst.colored then
+		inst.colored = {}
+	end
+
+	SetAddColor(inst.colored.x, ZERO)
+	inst.colored.x = xtarget
+	SetAddColor(inst.colored.x, RED)
+
+	SetAddColor(inst.colored.z, ZERO)
+	inst.colored.z = ztarget
+	SetAddColor(inst.colored.z, BLUE)
+end
+
+local function RemoveColors(inst)
+	if inst.colored then
+		SetAddColor(inst.colored.x, ZERO)
+		SetAddColor(inst.colored.z, ZERO)
+		inst.colored = nil
+	end
+end
+
+local function Snap(inst, position, can_snap)
+	if not can_snap or not position then return false end
+	local cx, cy, cz = position:Get()
+	local entities = GLOBAL.TheSim:FindEntities(cx, cy, cz, 20)
+	local xt, x  = SnapAxis('x', entities, position, can_snap)
+	local zt, z = SnapAxis('z', entities, position, can_snap)
+	UpdateColors(inst, xt, zt)
+	return true, Vector3(x, cy, z)
 end
 
 
@@ -102,7 +134,7 @@ local function DLC001PlacerOnUpdate(self, _)
 	local can_snap = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = Snap(pt, can_snap)
+		local ok, to = Snap(self.inst, pt, can_snap)
 		if ok then
 			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -113,7 +145,7 @@ local function DLC001PlacerOnUpdate(self, _)
 		self.inst.Transform:SetPosition(pt:Get())
 	else
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(1,0,0))
-		local ok, to = Snap(p, can_snap)
+		local ok, to = Snap(self.inst, p, can_snap)
 		if ok then
 			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -147,11 +179,10 @@ end
 
 
 local function DLC002PlacerOnUpdate(self, _)
-	print('DLC002PlacerOnUpdate:', self.inst.prefab)
 	local can_snap = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = Snap(pt, can_snap)
+		local ok, to = Snap(self.inst, pt, can_snap)
 		if ok then
 			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -179,7 +210,7 @@ local function DLC002PlacerOnUpdate(self, _)
 		end
 
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(offset,0,0))
-		local ok, to = Snap(p, can_snap)
+		local ok, to = Snap(self.inst, p, can_snap)
 		if ok then
 			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -249,16 +280,17 @@ AddComponentPostInit("builder", function(builder)
 	local CanBuildAtPoint = builder.CanBuildAtPoint
 
 	function builder:CanBuildAtPoint(pt, recipe)
-		print('CanBuildAtPoint: recipe', recipe.name)
-		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
+		local ok, to = Snap(self.inst, pt, OnlyPrefab(recipe.name))
 		if ok then pt = to end
 		return CanBuildAtPoint(self, pt, recipe)
 	end
 
 	local MakeRecipe = builder.MakeRecipe
 	function builder:MakeRecipe(recipe, pt, ...)
-		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
+		local ok, to = Snap(self.inst, pt, OnlyPrefab(recipe.name))
 		if ok then pt = to end
+		print(('builder:MakeRecipe(%s)'):format(recipe.name))
+		RemoveColors(self.inst)
 		return MakeRecipe(self, recipe, pt, ...)
 	end
 end)
@@ -266,14 +298,16 @@ end)
 AddComponentPostInit("deployable", function(deployable)
 	local CanDeploy, Deploy = deployable.CanDeploy, deployable.Deploy
 	function deployable:CanDeploy(pt)
-		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		local ok, to = Snap(self.inst, pt, DEPLOYABLE_SNAPS[self.inst.prefab])
 		if ok then pt = to end
 		return CanDeploy(self, pt)
 	end
 
 	function deployable:Deploy(pt, deployer)
-		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		local ok, to = Snap(self.inst, pt, DEPLOYABLE_SNAPS[self.inst.prefab])
 		if ok then pt = to end
+		print(('deployable:Deploy(%s)'):format(self.inst.prefab))
+		RemoveColors(self.inst)
 		return Deploy(self, pt, deployer)
 	end
 end)

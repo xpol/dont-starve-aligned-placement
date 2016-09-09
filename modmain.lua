@@ -39,9 +39,26 @@ local SNAP_INFO = {
 	{OnlyPrefab('slow_farmplot'), 'slow_farmplot_placer'},
 	{OnlyPrefab('fast_farmplot'), 'fast_farmplot_placer'},
 	{OnlyPrefab('ashfarmplot'), 'ashfarmplot_placer'},
+	{OnlyPrefab('birdcage'), 'birdcage_placer'},
+	{OnlyPrefab('beebox'), 'beebox_placer'},
+	{OnlyPrefab('icebox'), 'icebox_placer'},
+	{OnlyPrefab('lightning_rod'), 'lightning_rod_placer'},
+	{OnlyPrefab('pighouse'), 'pighouse_placer'},
+	{OnlyPrefab('rabbithouse'), 'rabbithouse_placer'},
+	{OnlyPrefab('cookpot'), 'cookpot_placer'},
+	{OnlyPrefab('treasurechest'), 'treasurechest_placer'},
+	{OnlyPrefab('meatrack'), 'meatrack_placer'},
+	{OnlyPrefab('firesuppressor'), 'firesuppressor_placer'},
+	{OnlyPrefab('pottedfern'), 'pottedfern_placer'},
+	{OnlyPrefab('dragonflychest'), 'dragonflychest_placer'},
+
+
 
 	{PrefabStatus('pinecone', 'PLANTED'), 'pinecone_placer', 'pinecone'},
-	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', 'acorn'}
+	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', 'acorn'},
+	{PrefabStatus('coconut', 'PLANTED'), 'coconut_placer', 'coconut'},
+
+	{OnlyPrefab('flower'), 'butterfly_placer', 'butterfly'},
 }
 
 local function GenerateLookups(infos)

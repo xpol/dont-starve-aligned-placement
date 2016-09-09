@@ -39,7 +39,7 @@ local SNAP_INFO = {
 	{OnlyPrefab('ashfarmplot'), 'ashfarmplot_placer'},
 
 	{PrefabStatus('pinecone', 'PLANTED'), 'pinecone_placer', 'pinecone'},
-	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', ''}
+	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', 'acorn'}
 }
 
 local function GenerateLookups(infos)

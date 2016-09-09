@@ -51,8 +51,9 @@ local SNAP_INFO = {
 	{OnlyPrefab('firesuppressor'), 'firesuppressor_placer'},
 	{OnlyPrefab('pottedfern'), 'pottedfern_placer'},
 	{OnlyPrefab('dragonflychest'), 'dragonflychest_placer'},
-
-
+	{OnlyPrefab('wildborehouse'), 'wildborehouse_placer'},
+	{OnlyPrefab('primeapebarrel'), 'primeapebarrel_placer'},
+	{OnlyPrefab('dragoonden'), 'dragoonden_placer'},
 
 	{PrefabStatus('pinecone', 'PLANTED'), 'pinecone_placer', 'pinecone'},
 	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', 'acorn'},

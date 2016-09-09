@@ -5,7 +5,7 @@ local unpack, Vector3, GetPlayer, GetWorld = table.unpack or GLOBAL.unpack, GLOB
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
-local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 12, 0.5, 0.1, 0.001
+local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 20, 0.5, 0.1, 0.001
 
 local function OnlyPrefab(prefab)
 	return function(inst)
@@ -146,12 +146,11 @@ local function EvenSpaceAxis(axis, entities, position, middle)
 		local vpos = v:GetPosition()
 		if math.abs(vpos[oaxis] - middle[oaxis]) < EPSILON then
 			local d = vpos[axis] - middle[axis]
-			local absd = math.abs(d)
-			if absd > EPSILON
-			and (not t or absd < lastd)
+			local distdiff = math.abs(diff + d)
+			if distdiff < lastd
 			and DifferentSign(diff, d)
-			and math.abs(diff + d) < SNAP/2 then
-				t, lastd = v, absd
+			and distdiff < SNAP then
+				t, lastd = v, distdiff
 			end
 		end
 	end

@@ -5,7 +5,7 @@ local unpack, Vector3, GetPlayer, GetWorld = table.unpack or GLOBAL.unpack, GLOB
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
-local SNAP, ALIGN = 0.5, 0.1
+local SEARCH_RAIDUS, SNAP, ALIGN = 12, 0.5, 0.1
 
 local function OnlyPrefab(prefab)
 	return function(inst)
@@ -118,14 +118,19 @@ local function RemoveColors(inst)
 	end
 end
 
-local function Snap(inst, position, can_snap)
+local function Snap(position, can_snap)
 	if not can_snap or not position then return false end
 	local cx, cy, cz = position:Get()
-	local entities = GLOBAL.TheSim:FindEntities(cx, cy, cz, 20)
+	local entities = GLOBAL.TheSim:FindEntities(cx, cy, cz, SEARCH_RAIDUS)
 	local xt, x  = SnapAxis('x', entities, position, can_snap)
 	local zt, z = SnapAxis('z', entities, position, can_snap)
-	UpdateColors(inst, xt, zt)
-	return true, Vector3(x, cy, z)
+	return true, Vector3(x, cy, z), xt, zt
+end
+
+local function SnapWithColorFX(placer, position, can_snap)
+	local ok, to, xt, zt = Snap(position, can_snap)
+	UpdateColors(placer, xt, zt)
+	return ok, to
 end
 
 
@@ -134,7 +139,7 @@ local function DLC001PlacerOnUpdate(self, _)
 	local can_snap = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = Snap(self.inst, pt, can_snap)
+		local ok, to = SnapWithColorFX(self, pt, can_snap)
 		if ok then
 			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -145,7 +150,7 @@ local function DLC001PlacerOnUpdate(self, _)
 		self.inst.Transform:SetPosition(pt:Get())
 	else
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(1,0,0))
-		local ok, to = Snap(self.inst, p, can_snap)
+		local ok, to = SnapWithColorFX(self, p, can_snap)
 		if ok then
 			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -182,7 +187,7 @@ local function DLC002PlacerOnUpdate(self, _)
 	local can_snap = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = Snap(self.inst, pt, can_snap)
+		local ok, to = SnapWithColorFX(self, pt, can_snap)
 		if ok then
 			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -210,7 +215,7 @@ local function DLC002PlacerOnUpdate(self, _)
 		end
 
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(offset,0,0))
-		local ok, to = Snap(self.inst, p, can_snap)
+		local ok, to = SnapWithColorFX(self, p, can_snap)
 		if ok then
 			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -274,23 +279,24 @@ end
 
 AddComponentPostInit("placer", function(placer)
 	placer.OnUpdate = DLC002 and DLC002PlacerOnUpdate or DLC001PlacerOnUpdate
+	placer.inst:ListenForEvent("onremove", function()
+		RemoveColors(placer)
+	end)
 end)
 
 AddComponentPostInit("builder", function(builder)
 	local CanBuildAtPoint = builder.CanBuildAtPoint
 
 	function builder:CanBuildAtPoint(pt, recipe)
-		local ok, to = Snap(self.inst, pt, OnlyPrefab(recipe.name))
+		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
 		if ok then pt = to end
 		return CanBuildAtPoint(self, pt, recipe)
 	end
 
 	local MakeRecipe = builder.MakeRecipe
 	function builder:MakeRecipe(recipe, pt, ...)
-		local ok, to = Snap(self.inst, pt, OnlyPrefab(recipe.name))
+		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
 		if ok then pt = to end
-		print(('builder:MakeRecipe(%s)'):format(recipe.name))
-		RemoveColors(self.inst)
 		return MakeRecipe(self, recipe, pt, ...)
 	end
 end)
@@ -298,16 +304,14 @@ end)
 AddComponentPostInit("deployable", function(deployable)
 	local CanDeploy, Deploy = deployable.CanDeploy, deployable.Deploy
 	function deployable:CanDeploy(pt)
-		local ok, to = Snap(self.inst, pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
 		if ok then pt = to end
 		return CanDeploy(self, pt)
 	end
 
 	function deployable:Deploy(pt, deployer)
-		local ok, to = Snap(self.inst, pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
 		if ok then pt = to end
-		print(('deployable:Deploy(%s)'):format(self.inst.prefab))
-		RemoveColors(self.inst)
 		return Deploy(self, pt, deployer)
 	end
 end)

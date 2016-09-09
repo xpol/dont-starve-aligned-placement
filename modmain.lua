@@ -32,6 +32,8 @@ local SNAP_INFO = {
 	{OnlyPrefab('sapling'), 'dug_sapling_placer', 'dug_sapling'},
 	{OnlyPrefab('grass'), 'dug_grass_placer', 'dug_grass'},
 	{OnlyPrefab('marsh_bush'), 'dug_marsh_bush_placer', 'dug_marsh_bush'},
+	{OnlyPrefab('bambootree'), 'dug_bambootree_placer', 'dug_bambootree'},
+	{OnlyPrefab('vine'), 'dug_bush_vine_placer', 'dug_bush_vine'},
 
 	{PrefabMatch('^.+_farmplot$'), 'farmplot_placer'},
 	{OnlyPrefab('slow_farmplot'), 'slow_farmplot_placer'},

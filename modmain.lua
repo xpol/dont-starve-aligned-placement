@@ -88,7 +88,7 @@ local function SnapAxis(axis, entities, position, can_snap)
 	return t, t:GetPosition()[axis]
 end
 
-local RED, BLUE, ZERO = {.75,.25,.25,0}, {.25,.25,.75, 0}, {0,0,0,0}
+local GREED, ZERO = {.25,.75,.25, 0}, {0,0,0,0}
 
 local function SetAddColor(inst,color)
 	if inst then
@@ -103,11 +103,11 @@ local function UpdateColors(inst, xtarget, ztarget)
 
 	SetAddColor(inst.colored.x, ZERO)
 	inst.colored.x = xtarget
-	SetAddColor(inst.colored.x, RED)
+	SetAddColor(inst.colored.x, GREED)
 
 	SetAddColor(inst.colored.z, ZERO)
 	inst.colored.z = ztarget
-	SetAddColor(inst.colored.z, BLUE)
+	SetAddColor(inst.colored.z, GREED)
 end
 
 local function RemoveColors(inst)

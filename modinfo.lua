@@ -1,5 +1,5 @@
 name = 'Aligned Placement'
-description = 'Aligned to entities of the same kind when build, plant and deploy'
+description = 'Align to entities of the same kind when build, plant and deploy'
 author = 'xpolife'
 version = '1.0.0'
 

@@ -56,4 +56,4 @@ To report bug and crashes please also include the log.txt found in the follow lo
 * Mac: ~/Documents/Klei/DoNotStarve/log.txt
 * Linux ~/.klei/DoNotStarve/log.txt
 
-Bug report [here](https://github.com/xpol/dont-starve-aligned-placement/issues) and attach you log.txt
+Bug report and feature request [here](https://github.com/xpol/dont-starve-aligned-placement/issues) and attach you log.txt

@@ -27,6 +27,7 @@ local function PrefabStatus(prefab, status)
 end
 
 local SNAP_INFO = {
+	-- Check function, placer, deployable/recipe
 	{OnlyPrefab('berrybush'), 'dug_berrybush_placer', 'dug_berrybush'},
 	{OnlyPrefab('berrybush2'), 'dug_berrybush2_placer', 'dug_berrybush2'},
 	{OnlyPrefab('sapling'), 'dug_sapling_placer', 'dug_sapling'},
@@ -36,24 +37,24 @@ local SNAP_INFO = {
 	{OnlyPrefab('vine'), 'dug_bush_vine_placer', 'dug_bush_vine'},
 
 	{PrefabMatch('^.+_farmplot$'), 'farmplot_placer'},
-	{OnlyPrefab('slow_farmplot'), 'slow_farmplot_placer'},
-	{OnlyPrefab('fast_farmplot'), 'fast_farmplot_placer'},
-	{OnlyPrefab('ashfarmplot'), 'ashfarmplot_placer'},
-	{OnlyPrefab('birdcage'), 'birdcage_placer'},
-	{OnlyPrefab('beebox'), 'beebox_placer'},
-	{OnlyPrefab('icebox'), 'icebox_placer'},
-	{OnlyPrefab('lightning_rod'), 'lightning_rod_placer'},
-	{OnlyPrefab('pighouse'), 'pighouse_placer'},
-	{OnlyPrefab('rabbithouse'), 'rabbithouse_placer'},
-	{OnlyPrefab('cookpot'), 'cookpot_placer'},
-	{OnlyPrefab('treasurechest'), 'treasurechest_placer'},
-	{OnlyPrefab('meatrack'), 'meatrack_placer'},
-	{OnlyPrefab('firesuppressor'), 'firesuppressor_placer'},
-	{OnlyPrefab('pottedfern'), 'pottedfern_placer'},
-	{OnlyPrefab('dragonflychest'), 'dragonflychest_placer'},
-	{OnlyPrefab('wildborehouse'), 'wildborehouse_placer'},
-	{OnlyPrefab('primeapebarrel'), 'primeapebarrel_placer'},
-	{OnlyPrefab('dragoonden'), 'dragoonden_placer'},
+	{OnlyPrefab('slow_farmplot'), 'slow_farmplot_placer', 'slow_farmplot'},
+	{OnlyPrefab('fast_farmplot'), 'fast_farmplot_placer', 'fast_farmplot'},
+	{OnlyPrefab('ashfarmplot'), 'ashfarmplot_placer', 'ashfarmplot'},
+	{OnlyPrefab('birdcage'), 'birdcage_placer', 'birdcage'},
+	{OnlyPrefab('beebox'), 'beebox_placer', 'beebox'},
+	{OnlyPrefab('icebox'), 'icebox_placer', 'icebox'},
+	{OnlyPrefab('lightning_rod'), 'lightning_rod_placer', 'lightning_rod'},
+	{OnlyPrefab('pighouse'), 'pighouse_placer', 'pighouse'},
+	{OnlyPrefab('rabbithouse'), 'rabbithouse_placer', 'rabbithouse'},
+	{OnlyPrefab('cookpot'), 'cookpot_placer', 'cookpot'},
+	{OnlyPrefab('treasurechest'), 'treasurechest_placer', 'treasurechest'},
+	{OnlyPrefab('meatrack'), 'meatrack_placer', 'meatrack'},
+	{OnlyPrefab('firesuppressor'), 'firesuppressor_placer', 'firesuppressor'},
+	{OnlyPrefab('pottedfern'), 'pottedfern_placer', 'pottedfern'},
+	{OnlyPrefab('dragonflychest'), 'dragonflychest_placer', 'dragonflychest'},
+	{OnlyPrefab('wildborehouse'), 'wildborehouse_placer', 'wildborehouse'},
+	{OnlyPrefab('primeapebarrel'), 'primeapebarrel_placer', 'primeapebarrel'},
+	{OnlyPrefab('dragoonden'), 'dragoonden_placer', 'dragoonden'},
 
 	{PrefabStatus('pinecone', 'PLANTED'), 'pinecone_placer', 'pinecone'},
 	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', 'acorn'},
@@ -64,17 +65,17 @@ local SNAP_INFO = {
 
 local function GenerateLookups(infos)
 	local placers = {}
-	local deployables = {}
+	local deployables_or_recipes = {}
 	for _, v in ipairs(infos) do
 		local checker, placer, deployable = unpack(v)
 		placers[placer] = checker
-		if deployable then deployables[deployable] = checker end
+		if deployable then deployables_or_recipes[deployable] = checker end
 	end
-	return placers, deployables
+	return placers, deployables_or_recipes
 end
 
 
-local PLACER_SNAPS, DEPLOYABLE_SNAPS = GenerateLookups(SNAP_INFO)
+local PLACER_SNAPS, DEPLOYABLE_RECIPE_SNAPS = GenerateLookups(SNAP_INFO)
 
 local function Align(v, step)
 	return (v + step/2) - (v % step)
@@ -354,14 +355,14 @@ AddComponentPostInit("builder", function(builder)
 	local CanBuildAtPoint = builder.CanBuildAtPoint
 
 	function builder:CanBuildAtPoint(pt, recipe)
-		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
+		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[recipe.name])
 		if ok then pt = to end
 		return CanBuildAtPoint(self, pt, recipe)
 	end
 
 	local MakeRecipe = builder.MakeRecipe
 	function builder:MakeRecipe(recipe, pt, ...)
-		local ok, to = Snap(pt, OnlyPrefab(recipe.name))
+		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[recipe.name])
 		if ok then pt = to end
 		return MakeRecipe(self, recipe, pt, ...)
 	end
@@ -370,13 +371,13 @@ end)
 AddComponentPostInit("deployable", function(deployable)
 	local CanDeploy, Deploy = deployable.CanDeploy, deployable.Deploy
 	function deployable:CanDeploy(pt)
-		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[self.inst.prefab])
 		if ok then pt = to end
 		return CanDeploy(self, pt)
 	end
 
 	function deployable:Deploy(pt, deployer)
-		local ok, to = Snap(pt, DEPLOYABLE_SNAPS[self.inst.prefab])
+		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[self.inst.prefab])
 		if ok then pt = to end
 		return Deploy(self, pt, deployer)
 	end

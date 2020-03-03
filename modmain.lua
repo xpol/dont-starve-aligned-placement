@@ -1,12 +1,22 @@
-local unpack, Vector3, GetPlayer, GetWorld = table.unpack or GLOBAL.unpack, GLOBAL.Vector3,GLOBAL.GetPlayer, GLOBAL.GetWorld
-local CAPY_DLC, IsDLCEnabled = GLOBAL.CAPY_DLC, GLOBAL.IsDLCEnabled
+local require, unpack, Vector3 = GLOBAL.require, table.unpack or GLOBAL.unpack, GLOBAL.Vector3
+
 local DST = GLOBAL.TheSim.GetGameID ~= nil and GLOBAL.TheSim:GetGameID() == "DST"
 
-local GenerateOnUpdate = require(DST and "together" or (IsDLCEnabled(CAPY_DLC) and "capy" or "vanilla") )
+local function IsDLCEnabled(dlc)
+	-- if the constant doesn't even exist, then they can't have the DLC
+	if not GLOBAL.rawget(GLOBAL, dlc) then return false end
+	GLOBAL.assert(GLOBAL.rawget(GLOBAL, "IsDLCEnabled"), "Old version of game, please update (IsDLCEnabled function missing)")
+	return GLOBAL.IsDLCEnabled(GLOBAL[dlc])
+end
+
+local GenerateOnUpdate = require(DST and "together" or (IsDLCEnabled("CAPY_DLC") and "capy" or "vanilla") )
+
+local GetPlayer = GLOBAL.GetPlayer or function() return GLOBAL.ThePlayer end
+local GetWorld = GLOBAL.GetWorld or function() return GLOBAL.TheWorld end
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
-local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 20, 0.5, 0.1, 0.001
+local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 10, 0.75, 0.1, 0.001
 
 local function OnlyPrefab(prefab)
 	return function(inst)
@@ -57,14 +67,13 @@ local SNAP_INFO = {
 	{OnlyPrefab('primeapebarrel'), 'primeapebarrel_placer', 'primeapebarrel'},
 	{OnlyPrefab('dragoonden'), 'dragoonden_placer', 'dragoonden'},
 
-	{PrefabStatus('pinecone', 'PLANTED'), 'pinecone_placer', 'pinecone'},
-	{PrefabStatus('acorn', 'PLANTED'), 'acorn_placer', 'acorn'},
-	{PrefabStatus('coconut', 'PLANTED'), 'coconut_placer', 'coconut'},
+	{OnlyPrefab('pinecone_sapling'), 'pinecone_placer', 'pinecone'},
+	{OnlyPrefab('acorn_sapling'), 'acorn_placer', 'acorn'},
 
 	{OnlyPrefab('flower'), 'butterfly_placer', 'butterfly'},
 }
 
-local function GenerateLookups(infos)
+local function GenerateEnitiyFilterTable(infos)
 	local placers = {}
 	local deployables_or_recipes = {}
 	for _, v in ipairs(infos) do
@@ -76,7 +85,7 @@ local function GenerateLookups(infos)
 end
 
 
-local PLACER_SNAPS, DEPLOYABLE_RECIPE_SNAPS = GenerateLookups(SNAP_INFO)
+local PLACER_FILTERS, DEPLOYABLE_RECIPE_FILTERS = GenerateEnitiyFilterTable(SNAP_INFO)
 
 local function Align(v, step)
 	return (v + step/2) - (v % step)
@@ -118,25 +127,17 @@ local function SetAddColor(inst,color)
 	end
 end
 
-local function UpdateHilightColors(inst, xtarget, ztarget)
-	if not inst.colored then
-		inst.colored = {}
+local function RemoveHilightColors(inst)
+	if inst.hilights then
+		for _, e in ipairs(inst.hilights) do SetAddColor(e, ZERO) end
 	end
-
-	SetAddColor(inst.colored.x, ZERO)
-	inst.colored.x = xtarget
-	SetAddColor(inst.colored.x, GREED)
-
-	SetAddColor(inst.colored.z, ZERO)
-	inst.colored.z = ztarget
-	SetAddColor(inst.colored.z, GREED)
 end
 
-local function RemoveColors(inst)
-	if inst.colored then
-		SetAddColor(inst.colored.x, ZERO)
-		SetAddColor(inst.colored.z, ZERO)
-		inst.colored = nil
+local function UpdateHilightColors(inst, targets)
+	RemoveHilightColors(inst)
+	inst.hilights = targets
+	if inst.hilights then
+		for _, e in ipairs(inst.hilights) do SetAddColor(e, GREED) end
 	end
 end
 
@@ -144,7 +145,8 @@ local function FindEntities(position, radius, fn)
 	local entities = {}
 	local x, y, z = position:Get()
 	local nears = GLOBAL.TheSim:FindEntities(x, y, z, radius)
-	for _, v in ipairs(nears) do
+    for _, v in ipairs(nears) do
+        print(v.prefab, fn(v))
 		if fn(v) then entities[#entities+1] = v end
 	end
 	return entities
@@ -181,6 +183,9 @@ local function EvenSpaceAxis(axis, entities, position, middle)
 end
 
 local function SnapToEntities(position, snapFilter)
+    if not position or not snapFilter then
+        return position
+    end
 	local entities = FindEntities(position, SEARCH_RADIUS, snapFilter)
 	local xt, x  = SnapAxis('x', entities, position)
 	local zt, z = SnapAxis('z', entities, position)
@@ -189,170 +194,28 @@ local function SnapToEntities(position, snapFilter)
 		zt, z = EvenSpaceAxis('z', entities, position, xt:GetPosition())
 	elseif xt == nil and zt ~= nil then
 		xt, x = EvenSpaceAxis('x', entities, position, zt:GetPosition())
-	end
+    end
 
-	return true, Vector3(x, position.y, z), xt, zt
+	return Vector3(x, position.y, z), {xt, zt}
 end
 
 local function Snap(placer, position)
-	local snapFilter = PLACER_SNAPS[placer.inst.prefab]
+	local snapFilter = PLACER_FILTERS[placer.inst.prefab]
 	if not snapFilter then
 		return position
 	end
 
-	local ok, to, xt, zt = SnapToEntities(position, snapFilter)
-	UpdateHilightColors(placer, xt, zt)
-	return ok and to or position
+	local to, targets = SnapToEntities(position, snapFilter)
+	UpdateHilightColors(placer, targets)
+	return to or position
 end
 
 
--- Patched version of Placer:OnUpdate with respect of self.selected_pos
-local function DLC001PlacerOnUpdate(self, _)
-	local snapFilter = PLACER_SNAPS[self.inst.prefab]
-	if not GLOBAL.TheInput:ControllerAttached() then
-		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = SnapWithColorFX(self, pt, snapFilter)
-		if ok then
-			pt = to
-		elseif self.snap_to_tile and GetWorld().Map then
-			pt = Vector3(GetWorld().Map:GetTileCenterPoint(pt:Get()))
-		elseif self.snap_to_meters then
-			pt = Vector3(math.floor(pt.x)+.5, 0, math.floor(pt.z)+.5)
-		end
-		self.inst.Transform:SetPosition(pt:Get())
-	else
-		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(1,0,0))
-		local ok, to = SnapWithColorFX(self, p, snapFilter)
-		if ok then
-			self.inst.Transform:SetPosition(to:Get())
-		elseif self.snap_to_tile and GetWorld().Map then
-			--Using an offset in this causes a bug in the terraformer functionality while using a controller.
-			local pt = Vector3(GetPlayer().entity:LocalToWorldSpace(0,0,0))
-			pt = Vector3(GetWorld().Map:GetTileCenterPoint(pt:Get()))
-			self.inst.Transform:SetPosition(pt:Get())
-		elseif self.snap_to_meters then
-			local pt = Vector3(GetPlayer().entity:LocalToWorldSpace(1,0,0))
-			pt = Vector3(math.floor(pt.x)+.5, 0, math.floor(pt.z)+.5)
-			self.inst.Transform:SetPosition(pt:Get())
-		else
-			if self.inst.parent == nil then
-				GetPlayer():AddChild(self.inst)
-				self.inst.Transform:SetPosition(1,0,0)
-			end
-		end
-	end
-
-	self.can_build = true
-	if self.testfn then
-		self.can_build = self.testfn(Vector3(self.inst.Transform:GetWorldPosition()))
-	end
-
-	--self.inst.AnimState:SetMultColour(0,0,0,.5)
-
-	local color = self.can_build and Vector3(.25,.75,.25) or Vector3(.75,.25,.25)
-	self.inst.AnimState:SetAddColour(color.x, color.y, color.z ,0)
-
-end
-
-
-local function DLC002PlacerOnUpdate(self, _)
-	local snapFilter = PLACER_SNAPS[self.inst.prefab]
-	if not GLOBAL.TheInput:ControllerAttached() then
-		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = SnapWithColorFX(self, pt, snapFilter)
-		if ok then
-			pt = to
-		elseif self.snap_to_tile and GetWorld().Map then
-			pt = Vector3(GetWorld().Map:GetTileCenterPoint(pt:Get()))
-		elseif self.snap_to_meters then
-			pt = Vector3(math.floor(pt.x)+.5, 0, math.floor(pt.z)+.5)
-		elseif self.snap_to_flood and GetWorld().Flooding then
-			local center = Vector3(GetWorld().Flooding:GetTileCenterPoint(pt:Get()))
-			pt.x = center.x
-			pt.y = center.y
-			pt.z = center.z
-		end
-		self.inst.Transform:SetPosition(pt:Get())
-	else
-		local offset = 1
-		if self.recipe then
-			if self.recipe.distance then
-				offset = self.recipe.distance - 1
-				offset = math.max(offset, 1)
-			end
-		elseif self.invobject then
-			if self.invobject.components.deployable and self.invobject.components.deployable.deploydistance then
-				offset = self.invobject.components.deployable.deploydistance
-			end
-		end
-
-		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(offset,0,0))
-		local ok, to = SnapWithColorFX(self, p, snapFilter)
-		if ok then
-			self.inst.Transform:SetPosition(to:Get())
-		elseif self.snap_to_tile and GetWorld().Map then
-			--Using an offset in this causes a bug in the terraformer functionality while using a controller.
-			local pt = Vector3(GetPlayer().entity:LocalToWorldSpace(0,0,0))
-			pt = Vector3(GetWorld().Map:GetTileCenterPoint(pt:Get()))
-			self.inst.Transform:SetPosition(pt:Get())
-		elseif self.snap_to_meters then
-			local pt = Vector3(GetPlayer().entity:LocalToWorldSpace(offset,0,0))
-			pt = Vector3(math.floor(pt.x)+.5, 0, math.floor(pt.z)+.5)
-			self.inst.Transform:SetPosition(pt:Get())
-		elseif self.snap_to_flood then
-			local pt = Vector3(GetPlayer().entity:LocalToWorldSpace(offset,0,0))
-			local center = Vector3(GetWorld().Flooding:GetTileCenterPoint(pt:Get()))
-			pt.x = center.x
-			pt.y = center.y
-			pt.z = center.z
-			self.inst.Transform:SetPosition(pt:Get())
-		elseif self.onground then
-				--V2C: this will keep ground orientation accurate and smooth,
-				--     but unfortunately position will be choppy compared to parenting
-					self.inst.Transform:SetPosition(GLOBAL.ThePlayer.entity:LocalToWorldSpace(1, 0, 0))
-		else
-			if self.inst.parent == nil then
-				GetPlayer():AddChild(self.inst)
-				self.inst.Transform:SetPosition(offset,0,0)
-			end
-		end
-	end
-
-	if self.fixedcameraoffset then
-					local rot = GLOBAL.TheCamera:GetHeading()
-				 self.inst.Transform:SetRotation(-rot+self.fixedcameraoffset) -- rotate against the camera
-		end
-
-	self.can_build = true
-	if self.testfn then
-		self.can_build = self.testfn(Vector3(self.inst.Transform:GetWorldPosition()))
-	end
-
-	--self.inst.AnimState:SetMultColour(0,0,0,.5)
-
-	local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-	local ground = GetWorld()
-		local tile = GLOBAL.GROUND.GRASS
-		if ground and ground.Map then
-				tile = ground.Map:GetTileAtPoint(pt:Get())
-		end
-
-		local onground = not ground.Map:IsWater(tile)
-
-	if (not self.can_build and self.hide_on_invalid) or (self.hide_on_ground and onground) then
-		self.inst:Hide()
-	else
-		self.inst:Show()
-		local color = self.can_build and Vector3(.25,.75,.25) or Vector3(.75,.25,.25)
-		self.inst.AnimState:SetAddColour(color.x, color.y, color.z ,0)
-	end
-
-end
 
 AddComponentPostInit("placer", function(placer)
-	placer.OnUpdate = DLC002 and DLC002PlacerOnUpdate or DLC001PlacerOnUpdate
+	placer.OnUpdate = GenerateOnUpdate(Snap)
 	placer.inst:ListenForEvent("onremove", function()
-		RemoveColors(placer)
+		RemoveHilightColors(placer)
 	end)
 end)
 
@@ -360,15 +223,14 @@ AddComponentPostInit("builder", function(builder)
 	local CanBuildAtPoint = builder.CanBuildAtPoint
 
 	function builder:CanBuildAtPoint(pt, recipe)
-		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[recipe.name])
-		if ok then pt = to end
+		pt = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[recipe.name])
 		return CanBuildAtPoint(self, pt, recipe)
 	end
 
 	local MakeRecipe = builder.MakeRecipe
-	function builder:MakeRecipe(recipe, pt, ...)
-		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[recipe.name])
-		if ok then pt = to end
+    function builder:MakeRecipe(recipe, pt, ...)
+        local filter = DEPLOYABLE_RECIPE_FILTERS[recipe.name]
+        pt = SnapToEntities(pt, filter)
 		return MakeRecipe(self, recipe, pt, ...)
 	end
 end)
@@ -376,14 +238,12 @@ end)
 AddComponentPostInit("deployable", function(deployable)
 	local CanDeploy, Deploy = deployable.CanDeploy, deployable.Deploy
 	function deployable:CanDeploy(pt)
-		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[self.inst.prefab])
-		if ok then pt = to end
+		pt = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
 		return CanDeploy(self, pt)
 	end
 
 	function deployable:Deploy(pt, deployer)
-		local ok, to = Snap(pt, DEPLOYABLE_RECIPE_SNAPS[self.inst.prefab])
-		if ok then pt = to end
+		pt = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
 		return Deploy(self, pt, deployer)
 	end
 end)

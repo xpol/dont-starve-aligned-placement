@@ -1,17 +1,20 @@
 -- Patcher code for Don't Starve Together
 -- steamapps\common\Don't Starve Together\data\databundles\scripts.zip\scripts\components\placer.lua
 local function GenerateOnUpdate(snap)
-return function(dt)
+return function(self, dt)
     if ThePlayer == nil then
         return
     elseif not TheInput:ControllerAttached() then
         local pt = self.selected_pos or TheInput:GetWorldPosition()
         if self.snap_to_tile then
             self.inst.Transform:SetPosition(TheWorld.Map:GetTileCenterPoint(pt:Get()))
+            print(("%s snap to title"):format(self.inst.prefab))
         elseif self.snap_to_meters then
             self.inst.Transform:SetPosition(math.floor(pt.x) + .5, 0, math.floor(pt.z) + .5)
+            print(("%s snap to meters"):format(self.inst.prefab))
         else
-            self.inst.Transform:SetPosition(snap(pt):Get()) -- MODIFIED LINE
+            print(("%s snap to entities"):format(self.inst.prefab))
+            self.inst.Transform:SetPosition(snap(self, pt):Get()) -- MODIFIED LINE
         end
     elseif self.snap_to_tile then
         --Using an offset in this causes a bug in the terraformer functionality while using a controller.
@@ -93,4 +96,4 @@ return function(dt)
 end
 end
 
-return GeneratOnUpdateFunction
+return GenerateOnUpdate

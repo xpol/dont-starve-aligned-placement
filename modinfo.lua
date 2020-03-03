@@ -1,7 +1,10 @@
 name = 'Aligned Placement'
 description = 'Align to entities of the same kind when build, plant and deploy'
 author = 'xpolife'
-version = '1.0.1'
+version = '1.1.0'
+
+icon_atlas = "AlignedPlacement.xml"
+icon = "AlignedPlacement.tex"
 
 forumthread = ''
 

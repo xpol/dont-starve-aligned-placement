@@ -1,7 +1,8 @@
-local CAPY_DLC, IsDLCEnabled = GLOBAL.CAPY_DLC, GLOBAL.IsDLCEnabled
-local DLC002 = IsDLCEnabled(CAPY_DLC)
-
 local unpack, Vector3, GetPlayer, GetWorld = table.unpack or GLOBAL.unpack, GLOBAL.Vector3,GLOBAL.GetPlayer, GLOBAL.GetWorld
+local CAPY_DLC, IsDLCEnabled = GLOBAL.CAPY_DLC, GLOBAL.IsDLCEnabled
+local DST = GLOBAL.TheSim.GetGameID ~= nil and GLOBAL.TheSim:GetGameID() == "DST"
+
+local GenerateOnUpdate = require(DST and "together" or (IsDLCEnabled(CAPY_DLC) and "capy" or "vanilla") )
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
@@ -117,7 +118,7 @@ local function SetAddColor(inst,color)
 	end
 end
 
-local function UpdateColors(inst, xtarget, ztarget)
+local function UpdateHilightColors(inst, xtarget, ztarget)
 	if not inst.colored then
 		inst.colored = {}
 	end
@@ -179,9 +180,8 @@ local function EvenSpaceAxis(axis, entities, position, middle)
 	return t, 2*middle[axis] - t:GetPosition()[axis]
 end
 
-local function Snap(position, can_snap)
-	if not can_snap or not position then return false end
-	local entities = FindEntities(position, SEARCH_RADIUS, can_snap)
+local function SnapToEntities(position, snapFilter)
+	local entities = FindEntities(position, SEARCH_RADIUS, snapFilter)
 	local xt, x  = SnapAxis('x', entities, position)
 	local zt, z = SnapAxis('z', entities, position)
 
@@ -194,19 +194,24 @@ local function Snap(position, can_snap)
 	return true, Vector3(x, position.y, z), xt, zt
 end
 
-local function SnapWithColorFX(placer, position, can_snap)
-	local ok, to, xt, zt = Snap(position, can_snap)
-	UpdateColors(placer, xt, zt)
-	return ok, to
+local function Snap(placer, position)
+	local snapFilter = PLACER_SNAPS[placer.inst.prefab]
+	if not snapFilter then
+		return position
+	end
+
+	local ok, to, xt, zt = SnapToEntities(position, snapFilter)
+	UpdateHilightColors(placer, xt, zt)
+	return ok and to or position
 end
 
 
 -- Patched version of Placer:OnUpdate with respect of self.selected_pos
 local function DLC001PlacerOnUpdate(self, _)
-	local can_snap = PLACER_SNAPS[self.inst.prefab]
+	local snapFilter = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = SnapWithColorFX(self, pt, can_snap)
+		local ok, to = SnapWithColorFX(self, pt, snapFilter)
 		if ok then
 			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -217,7 +222,7 @@ local function DLC001PlacerOnUpdate(self, _)
 		self.inst.Transform:SetPosition(pt:Get())
 	else
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(1,0,0))
-		local ok, to = SnapWithColorFX(self, p, can_snap)
+		local ok, to = SnapWithColorFX(self, p, snapFilter)
 		if ok then
 			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -251,10 +256,10 @@ end
 
 
 local function DLC002PlacerOnUpdate(self, _)
-	local can_snap = PLACER_SNAPS[self.inst.prefab]
+	local snapFilter = PLACER_SNAPS[self.inst.prefab]
 	if not GLOBAL.TheInput:ControllerAttached() then
 		local pt = self.selected_pos or GLOBAL.TheInput:GetWorldPosition()
-		local ok, to = SnapWithColorFX(self, pt, can_snap)
+		local ok, to = SnapWithColorFX(self, pt, snapFilter)
 		if ok then
 			pt = to
 		elseif self.snap_to_tile and GetWorld().Map then
@@ -282,7 +287,7 @@ local function DLC002PlacerOnUpdate(self, _)
 		end
 
 		local p = Vector3(GetPlayer().entity:LocalToWorldSpace(offset,0,0))
-		local ok, to = SnapWithColorFX(self, p, can_snap)
+		local ok, to = SnapWithColorFX(self, p, snapFilter)
 		if ok then
 			self.inst.Transform:SetPosition(to:Get())
 		elseif self.snap_to_tile and GetWorld().Map then

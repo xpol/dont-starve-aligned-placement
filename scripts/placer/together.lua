@@ -1,35 +1,40 @@
 -- Patcher code for Don't Starve Together
 -- steamapps\common\Don't Starve Together\data\databundles\scripts.zip\scripts\components\placer.lua
-local function GenerateOnUpdate(snap)
-return function(self, dt)
+local function GenerateOnUpdate(snap, getControllerOffset)
+return function(placer, dt)
+    local self = placer
     if ThePlayer == nil then
         return
-    elseif not TheInput:ControllerAttached() then
+    end
+    if not TheInput:ControllerAttached() then -- mouse
         local pt = self.selected_pos or TheInput:GetWorldPosition()
         if self.snap_to_tile then
             self.inst.Transform:SetPosition(TheWorld.Map:GetTileCenterPoint(pt:Get()))
-            print(("%s snap to title"):format(self.inst.prefab))
         elseif self.snap_to_meters then
             self.inst.Transform:SetPosition(math.floor(pt.x) + .5, 0, math.floor(pt.z) + .5)
-            print(("%s snap to meters"):format(self.inst.prefab))
         else
-            print(("%s snap to entities"):format(self.inst.prefab))
             self.inst.Transform:SetPosition(snap(self, pt):Get()) -- MODIFIED LINE
         end
-    elseif self.snap_to_tile then
-        --Using an offset in this causes a bug in the terraformer functionality while using a controller.
-        self.inst.Transform:SetPosition(TheWorld.Map:GetTileCenterPoint(ThePlayer.entity:LocalToWorldSpace(0, 0, 0)))
-    elseif self.snap_to_meters then
-        local x, y, z = ThePlayer.entity:LocalToWorldSpace(self.offset, 0, 0)
-        self.inst.Transform:SetPosition(math.floor(x) + .5, 0, math.floor(z) + .5)
-    elseif self.onground then
-        --V2C: this will keep ground orientation accurate and smooth,
-        --     but unfortunately position will be choppy compared to parenting
-        --V2C: switched to WallUpdate, so should be smooth now
-        self.inst.Transform:SetPosition(ThePlayer.entity:LocalToWorldSpace(self.offset, 0, 0))
-    elseif self.inst.parent == nil then
-        ThePlayer:AddChild(self.inst)
-        self.inst.Transform:SetPosition(self.offset, 0, 0)
+    else -- Controller
+        local off = getControllerOffset(self, dt)
+        if self.snap_to_tile then
+            --Using an offset in this causes a bug in the terraformer functionality while using a controller.
+            self.inst.Transform:SetPosition(TheWorld.Map:GetTileCenterPoint(ThePlayer.entity:LocalToWorldSpace(off:Get())))
+        elseif self.snap_to_meters then
+            local x, y, z = ThePlayer.entity:LocalToWorldSpace(self.offset, 0, 0)
+            self.inst.Transform:SetPosition(math.floor(x + off.x) + .5, 0, math.floor(z + off.z) + .5)
+        --elseif self.onground then
+            --V2C: this will keep ground orientation accurate and smooth,
+            --     but unfortunately position will be choppy compared to parenting
+            --V2C: switched to WallUpdate, so should be smooth now
+        --    local parent = ThePlayer.components.playercontroller.placer_parent.entity
+        --    local pos = placer_parent:GetPosition() - snap(self, Vector3(ThePlayer.entity:LocalToWorldSpace(self.offset + off.x, 0, off.z)))
+        --    ThePlayer.components.playercontroller.placer_parent.Transform:SetPosition(pos:Get()) 
+        else
+            local parent = ThePlayer.components.playercontroller.placer_parent.entity
+            local pos = snap(self, Vector3(parent:LocalToWorldSpace(self.offset + off.x, 0, off.z)))
+            self.inst.Transform:SetPosition(parent:WorldToLocalSpace(pos:Get()))
+        end
     end
 
     if self.fixedcameraoffset ~= nil then

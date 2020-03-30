@@ -1,4 +1,4 @@
-local require, unpack, Vector3 = GLOBAL.require, table.unpack or GLOBAL.unpack, GLOBAL.Vector3
+local require, unpack, select, Vector3 = GLOBAL.require, table.unpack or GLOBAL.unpack, GLOBAL.select, GLOBAL.Vector3
 
 local DST = GLOBAL.TheSim.GetGameID ~= nil and GLOBAL.TheSim:GetGameID() == "DST"
 
@@ -29,86 +29,72 @@ local GenerateOnUpdate = GetGenerateOnUpdate()
 
 local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 10, 0.5, 0.1, 0.001
 
-local function OnlyPrefab(prefab)
-    return function(inst)
-        return inst.prefab == prefab
+local function AlignTo(...)
+    local set = {}
+    for i = 1, select('#', ...) do
+        set[select(i, ...)] = true
     end
-end
-
-local function PrefabMatch(pattern)
     return function(inst)
-        return inst.prefab:match(pattern) ~= nil
-    end
-end
-
-local function PrefabStatus(prefab, status)
-    return function(inst)
-        local inspectable = inst.components.inspectable
-        return inst.prefab == prefab and inspectable and inspectable:GetStatus() == status
-    end
-end
-
-local function SaplingOrTree(sapling, treeRegx)
-    return function(inst)
-        local prefab = inst.prefab
-        if not prefab then return false end
-        if prefab == sapling then return true end
-
-        return prefab:match(treeRegx) ~= nil
+        return set[inst.prefab] == true
     end
 end
 
 local SNAP_INFO = {
     -- Check function, placer, deployable/recipe
     -- Plants
-    {OnlyPrefab('berrybush'), 'dug_berrybush_placer', 'dug_berrybush'},
-    {OnlyPrefab('berrybush2'), 'dug_berrybush2_placer', 'dug_berrybush2'},
-    {OnlyPrefab('berrybush_juicy'), 'dug_berrybush_juicy_placer', 'dug_berrybush_juicy'},
-    {OnlyPrefab('grass'), 'dug_grass_placer', 'dug_grass'},
-    
-    {OnlyPrefab('bambootree'), 'dug_bambootree_placer', 'dug_bambootree'},
-    {OnlyPrefab('vine'), 'dug_bush_vine_placer', 'dug_bush_vine'},
-    {OnlyPrefab('flower'), 'butterfly_placer', 'butterfly'},
-    {OnlyPrefab('rock_avocado_bush'), 'dug_rock_avocado_bush_placer', 'dug_rock_avocado_bush'},
-    {OnlyPrefab('sapling'), 'dug_sapling_placer', 'dug_sapling'},
-    {OnlyPrefab('sapling_moon'), 'dug_sapling_moon_placer', 'dug_sapling_moon'},
+    {AlignTo('berrybush'), 'dug_berrybush_placer', 'dug_berrybush'},
+    {AlignTo('berrybush2'), 'dug_berrybush2_placer', 'dug_berrybush2'},
+    {AlignTo('berrybush_juicy'), 'dug_berrybush_juicy_placer', 'dug_berrybush_juicy'},
+    {AlignTo('grass'), 'dug_grass_placer', 'dug_grass'},
+    {AlignTo('bambootree'), 'dug_bambootree_placer', 'dug_bambootree'},
+    {AlignTo('vine'), 'dug_bush_vine_placer', 'dug_bush_vine'},
+    {AlignTo('flower'), 'butterfly_placer', 'butterfly'},
+    {AlignTo('rock_avocado_bush'), 'dug_rock_avocado_bush_placer', 'dug_rock_avocado_bush'},
+    {AlignTo('sapling'), 'dug_sapling_placer', 'dug_sapling'},
+    {AlignTo('sapling_moon'), 'dug_sapling_moon_placer', 'dug_sapling_moon'},
+    {AlignTo('pottedfern'), 'pottedfern_placer', 'pottedfern'},
+    {AlignTo('marsh_bush'), 'dug_marsh_bush_placer', 'dug_marsh_bush'},
+
     -- Trees
-    {SaplingOrTree('pinecone_sapling', '^evergreen'), 'pinecone_placer', 'pinecone'},
-    {SaplingOrTree('acorn_sapling', '^deciduoustree'), 'acorn_placer', 'acorn'},
-    {SaplingOrTree('marblebean_sapling', '^marbleshrub'), 'marblebean_placer', 'marblebean'},
-    {SaplingOrTree('marsh_bush', '^marsh_tree$'), 'dug_marsh_bush_placer', 'dug_marsh_bush'},
+    {AlignTo('pinecone_sapling', 'evergreen'), 'pinecone_placer', 'pinecone'},
+    {AlignTo('acorn_sapling', 'deciduoustree'), 'acorn_placer', 'acorn'},
+    {AlignTo('twiggy_nut_sapling', 'twiggytree'), 'twiggy_nut_placer', 'twiggy_nut'},
+    {AlignTo('marblebean_sapling', 'marbleshrub'), 'marblebean_placer', 'marblebean'},
 
     -- Fires
-    {OnlyPrefab('campfire'), 'campfire_placer', 'campfire'},
-    {OnlyPrefab('coldfire'), 'coldfire_placer', 'coldfire'},
-    {OnlyPrefab('firepit'), 'firepit_placer', 'firepit'},
-    {OnlyPrefab('coldfirepit'), 'coldfirepit_placer', 'coldfirepit'},
+    {AlignTo('campfire'), 'campfire_placer', 'campfire'},
+    {AlignTo('coldfire'), 'coldfire_placer', 'coldfire'},
+    {AlignTo('firepit'), 'firepit_placer', 'firepit'},
+    {AlignTo('coldfirepit'), 'coldfirepit_placer', 'coldfirepit'},
 
-    -- Food
-    {OnlyPrefab('slow_farmplot'), 'slow_farmplot_placer', 'slow_farmplot'},
-    {OnlyPrefab('fast_farmplot'), 'fast_farmplot_placer', 'fast_farmplot'},
-    {OnlyPrefab('ashfarmplot'), 'ashfarmplot_placer', 'ashfarmplot'},
-    {OnlyPrefab('mushroom_farm'), 'mushroom_farm_placer', 'mushroom_farm'},
+    -- Farms
+    {AlignTo('slow_farmplot'), 'slow_farmplot_placer', 'slow_farmplot'},
+    {AlignTo('fast_farmplot'), 'fast_farmplot_placer', 'fast_farmplot'},
+    {AlignTo('mushroom_farm'), 'mushroom_farm_placer', 'mushroom_farm'},
 
     --Structure
-    {OnlyPrefab('birdcage'), 'birdcage_placer', 'birdcage'},
-    {OnlyPrefab('beebox'), 'beebox_placer', 'beebox'},
-    {OnlyPrefab('icebox'), 'icebox_placer', 'icebox'},
-    {OnlyPrefab('lightning_rod'), 'lightning_rod_placer', 'lightning_rod'},
-    {OnlyPrefab('pighouse'), 'pighouse_placer', 'pighouse'},
-    {OnlyPrefab('rabbithouse'), 'rabbithouse_placer', 'rabbithouse'},
-    {OnlyPrefab('cookpot'), 'cookpot_placer', 'cookpot'},
-    {OnlyPrefab('treasurechest'), 'treasurechest_placer', 'treasurechest'},
-    {OnlyPrefab('meatrack'), 'meatrack_placer', 'meatrack'},
-    {OnlyPrefab('firesuppressor'), 'firesuppressor_placer', 'firesuppressor'},
-    {OnlyPrefab('pottedfern'), 'pottedfern_placer', 'pottedfern'},
-    {OnlyPrefab('dragonflychest'), 'dragonflychest_placer', 'dragonflychest'},
-    {OnlyPrefab('wildborehouse'), 'wildborehouse_placer', 'wildborehouse'},
-    {OnlyPrefab('primeapebarrel'), 'primeapebarrel_placer', 'primeapebarrel'},
-    {OnlyPrefab('dragoonden'), 'dragoonden_placer', 'dragoonden'},
-    {OnlyPrefab('saltbox'), 'saltbox_placer', 'saltbox'},
-    {OnlyPrefab('scarecrow'), 'scarecrow_placer', 'scarecrow'},
+    {AlignTo('birdcage'), 'birdcage_placer', 'birdcage'},
+    {AlignTo('beebox'), 'beebox_placer', 'beebox'},
+    {AlignTo('icebox'), 'icebox_placer', 'icebox'},
+    {AlignTo('lightning_rod'), 'lightning_rod_placer', 'lightning_rod'},
+    {AlignTo('cookpot'), 'cookpot_placer', 'cookpot'},
+    {AlignTo('treasurechest'), 'treasurechest_placer', 'treasurechest'},
+    {AlignTo('meatrack'), 'meatrack_placer', 'meatrack'},
+    {AlignTo('firesuppressor'), 'firesuppressor_placer', 'firesuppressor'},
+    {AlignTo('dragonflychest'), 'dragonflychest_placer', 'dragonflychest'},
     
+    {AlignTo('dragoonden'), 'dragoonden_placer', 'dragoonden'},
+    {AlignTo('saltbox'), 'saltbox_placer', 'saltbox'},
+    {AlignTo('scarecrow'), 'scarecrow_placer', 'scarecrow'},
+    {AlignTo('resurrectionstatue'), 'resurrectionstatue_placer', 'resurrectionstatue'},
+    {AlignTo('cellar'), 'cellar_placer', 'cellar'}, -- MOD: DST Storm Cellar
+
+    -- Houses
+    {AlignTo('spiderden'), 'spidereggsack_placer', 'spidereggsack'},
+    {AlignTo('pighouse'), 'pighouse_placer', 'pighouse'},
+    {AlignTo('rabbithouse'), 'rabbithouse_placer', 'rabbithouse'},
+    {AlignTo('primeapebarrel'), 'primeapebarrel_placer', 'primeapebarrel'}, -- Shipwrecked
+    {AlignTo('wildborehouse'), 'wildborehouse_placer', 'wildborehouse'}, -- Shipwrecked
 }
 
 local function GenerateEnitiyFilterTable(infos)
@@ -161,7 +147,10 @@ local TAERGET_COLOR, ZERO = {.75,.75,.75, 0}, {0,0,0,0}
 
 local function SetAddColor(inst,color)
     if inst then
-        inst.AnimState:SetAddColour(unpack(color))
+        if not inst.AnimState then print(inst) end
+        if inst.AnimState then
+            inst.AnimState:SetAddColour(unpack(color))
+        end
     end
 end
 

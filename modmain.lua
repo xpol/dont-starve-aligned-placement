@@ -60,7 +60,8 @@ local SNAP_INFO = {
     {AlignTo('acorn_sapling', 'deciduoustree'), 'acorn_placer', 'acorn'},
     {AlignTo('twiggy_nut_sapling', 'twiggytree'), 'twiggy_nut_placer', 'twiggy_nut'},
     {AlignTo('marblebean_sapling', 'marbleshrub'), 'marblebean_placer', 'marblebean'},
-
+    {AlignTo('moonbutterfly_sapling', 'moon_tree'), 'moonbutterfly_placer', 'moonbutterfly'},
+    
     -- Fires
     {AlignTo('campfire'), 'campfire_placer', 'campfire'},
     {AlignTo('coldfire'), 'coldfire_placer', 'coldfire'},
@@ -82,8 +83,7 @@ local SNAP_INFO = {
     {AlignTo('meatrack'), 'meatrack_placer', 'meatrack'},
     {AlignTo('firesuppressor'), 'firesuppressor_placer', 'firesuppressor'},
     {AlignTo('dragonflychest'), 'dragonflychest_placer', 'dragonflychest'},
-    
-    {AlignTo('dragoonden'), 'dragoonden_placer', 'dragoonden'},
+    {AlignTo('dragoonden'), 'dragoonden_placer', 'dragoonden'}, -- Shipwrecked
     {AlignTo('saltbox'), 'saltbox_placer', 'saltbox'},
     {AlignTo('scarecrow'), 'scarecrow_placer', 'scarecrow'},
     {AlignTo('resurrectionstatue'), 'resurrectionstatue_placer', 'resurrectionstatue'},
@@ -95,6 +95,12 @@ local SNAP_INFO = {
     {AlignTo('rabbithouse'), 'rabbithouse_placer', 'rabbithouse'},
     {AlignTo('primeapebarrel'), 'primeapebarrel_placer', 'primeapebarrel'}, -- Shipwrecked
     {AlignTo('wildborehouse'), 'wildborehouse_placer', 'wildborehouse'}, -- Shipwrecked
+
+    -- Traps
+    {AlignTo('trap_teeth'), 'trap_teeth_placer', 'trap_teeth'},
+    {AlignTo('trap_bramble'), 'trap_bramble_placer', 'trap_bramble'},
+    {AlignTo('beemine'), 'beemine_placer', 'beemine'},
+    {AlignTo('eyeturret'), 'eyeturret_item_placer', 'eyeturret_item'},
 }
 
 local function GenerateEnitiyFilterTable(infos)
@@ -146,11 +152,8 @@ end
 local TAERGET_COLOR, ZERO = {.75,.75,.75, 0}, {0,0,0,0}
 
 local function SetAddColor(inst,color)
-    if inst then
-        if not inst.AnimState then print(inst) end
-        if inst.AnimState then
-            inst.AnimState:SetAddColour(unpack(color))
-        end
+    if inst and inst.AnimState then
+        inst.AnimState:SetAddColour(unpack(color))
     end
 end
 
@@ -173,9 +176,11 @@ end
 local function FindEntities(position, radius, fn)
     local entities = {}
     local x, y, z = position:Get()
-    local nears = GLOBAL.TheSim:FindEntities(x, y, z, radius)
+    local nears = GLOBAL.TheSim:FindEntities(x, y, z, radius, nil, {'INLIMBO', 'wall'})
     for _, v in ipairs(nears) do
-        if fn(v) then entities[#entities+1] = v end
+        if fn(v) then
+            entities[#entities+1] = v
+        end
     end
     return entities
 end
@@ -184,7 +189,8 @@ local function DifferentSign(a, b)
     return (a < 0 and b > 0) or (a > 0 and b < 0)
 end
 
-local function EvenSpaceAxis(axis, entities, position, middle)
+--TODO: Should support place in the middle
+local function EqualSpaceAlignAxis(axis, entities, position, middle)
     local oaxis = OtherAxis[axis]
     local diff = position[axis] - middle[axis]
     if math.abs(diff) < EPSILON then
@@ -220,9 +226,9 @@ local function SnapToEntities(position, snapFilter)
 
     if xt == nil or zt == nil then
         if xt ~= nil then
-            z, zt = EvenSpaceAxis('z', entities, position, xt:GetPosition())
+            z, zt = EqualSpaceAlignAxis('z', entities, position, xt:GetPosition())
         elseif zt ~= nil then
-            x, xt = EvenSpaceAxis('x', entities, position, zt:GetPosition())
+            x, xt = EqualSpaceAlignAxis('x', entities, position, zt:GetPosition())
         end
     end
 
@@ -267,12 +273,13 @@ end)
 AddComponentPostInit("deployable", function(deployable)
     local CanDeploy, Deploy = deployable.CanDeploy, deployable.Deploy
     function deployable:CanDeploy(pt)
-        pt = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
-        return CanDeploy(self, pt)
+        local aligned = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
+        return CanDeploy(self, aligned)
     end
 
     function deployable:Deploy(pt, deployer)
-        pt = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
-        return Deploy(self, pt, deployer)
+        local aligned = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
+        return Deploy(self, aligned, deployer)
     end
 end)
+

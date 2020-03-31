@@ -1,7 +1,7 @@
-name = 'Aligned Placement'
-description = 'Align to entities of the same kind when build, plant and deploy'
+name = 'Aligned Placement 对齐建造'
+description = 'Help align to already planted/built/deployed same items. 帮助对齐到已经种植、建造、部署的相同物品。'
 author = 'xpolife'
-version = '2.0.1'
+version = '2.0.2'
 
 icon_atlas = "AlignedPlacement.xml"
 icon = "AlignedPlacement.tex"

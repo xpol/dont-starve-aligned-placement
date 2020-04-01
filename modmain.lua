@@ -10,6 +10,7 @@ local function IsDLCEnabled(dlc)
 end
 
 local controller = require("controller")
+local align = require("align")
 
 local function GetGenerateOnUpdate()
     if DST then return
@@ -27,7 +28,7 @@ local GenerateOnUpdate = GetGenerateOnUpdate()
 
 --local KEY_CTRL = GLOBAL.KEY_CTRL
 
-local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 10, 0.5, 0.1, 0.001
+local SEARCH_RADIUS = 10
 
 local function AlignTo(...)
     local set = {}
@@ -117,37 +118,6 @@ end
 
 local PLACER_FILTERS, DEPLOYABLE_RECIPE_FILTERS = GenerateEnitiyFilterTable(SNAP_INFO)
 
-local function Align(v, step)
-    return (v + step/2) - (v % step)
-end
-
-local function DistanceAxis(axis, a, b)
-    return math.abs(a[axis] - b[axis])
-end
-
-local OtherAxis = {x = 'z', z = 'x'}
-
-local function NearestAtAxis(axis, entities, base)
-    local target, d = nil, math.huge
-    local oaxis = OtherAxis[axis]
-    for _, e in ipairs(entities) do
-        if DistanceAxis(axis, e:GetPosition(), base) < SNAP then
-            local newd = DistanceAxis(oaxis, e:GetPosition(), base)
-            if not target or d > newd then
-                target, d = e, newd
-            end
-        end
-    end
-    return target
-end
-
-local function SnapAxis(axis, entities, position)
-    local t = NearestAtAxis(axis, entities, position)
-    if not t then
-        return Align(position[axis], ALIGN), nil
-    end
-    return t:GetPosition()[axis], t
-end
 
 local TAERGET_COLOR, ZERO = {.75,.75,.75, 0}, {0,0,0,0}
 
@@ -185,54 +155,26 @@ local function FindEntities(position, radius, fn)
     return entities
 end
 
-local function DifferentSign(a, b)
-    return (a < 0 and b > 0) or (a > 0 and b < 0)
-end
-
---TODO: Should support place in the middle
-local function EqualSpaceAlignAxis(axis, entities, position, middle)
-    local oaxis = OtherAxis[axis]
-    local diff = position[axis] - middle[axis]
-    if math.abs(diff) < EPSILON then
-        return Align(position[axis], ALIGN), nil
-    end
-
-    local t, lastd = nil, math.huge
+local function SortByDistance(entities, to)
+    local distances  = {}
     for _, v in ipairs(entities) do
-        local vpos = v:GetPosition()
-        if math.abs(vpos[oaxis] - middle[oaxis]) < EPSILON then
-            local d = vpos[axis] - middle[axis]
-            local distdiff = math.abs(diff + d)
-            if distdiff < lastd
-            and DifferentSign(diff, d)
-            and distdiff < SNAP then
-                t, lastd = v, distdiff
-            end
-        end
+        local d = v:GetPosition() - to
+        distances[v] = d.x*d.x + d.z*d.z
     end
-    if not t then
-        return Align(position[axis], ALIGN), nil
-    end
-    return 2*middle[axis] - t:GetPosition()[axis], t
+    table.sort(entities, function(a, b)
+        return distances[a] < distances[b]
+    end)
 end
 
 local function SnapToEntities(position, snapFilter)
     if not position or not snapFilter then
         return position
     end
+
     local entities = FindEntities(position, SEARCH_RADIUS, snapFilter)
-    local x, xt = SnapAxis('x', entities, position)
-    local z, zt = SnapAxis('z', entities, position)
+    SortByDistance(entities, position)
 
-    if xt == nil or zt == nil then
-        if xt ~= nil then
-            z, zt = EqualSpaceAlignAxis('z', entities, position, xt:GetPosition())
-        elseif zt ~= nil then
-            x, xt = EqualSpaceAlignAxis('x', entities, position, zt:GetPosition())
-        end
-    end
-
-    return Vector3(x, position.y, z), {xt, zt}
+    return align.AlignPlacerToEntities(position, entities)
 end
 
 local function Snap(placer, position)
@@ -265,8 +207,9 @@ AddComponentPostInit("builder", function(builder)
 
     function builder:MakeRecipe(recipe, pt, ...)
         local filter = DEPLOYABLE_RECIPE_FILTERS[recipe.name]
-        pt = SnapToEntities(pt, filter)
-        return MakeRecipe(self, recipe, pt, ...)
+        local aligned = SnapToEntities(pt, filter)
+        print("Build", recipe.name, aligned)
+        return MakeRecipe(self, recipe, aligned, ...)
     end
 end)
 
@@ -279,6 +222,7 @@ AddComponentPostInit("deployable", function(deployable)
 
     function deployable:Deploy(pt, deployer)
         local aligned = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
+        print("Deploy", self.inst.prefab, aligned)
         return Deploy(self, aligned, deployer)
     end
 end)

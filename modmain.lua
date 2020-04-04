@@ -11,21 +11,9 @@ end
 
 local controller = require("controller")
 
-local function GetGenerateOnUpdate()
-    if DST then return
-        require("placer/together")
-    end
-    
-    if IsDLCEnabled("CAPY_DLC") then
-        return require("placer/capy")
-    end
-
-    return require("placer/vanilla")
-end
-
-local GenerateOnUpdate = GetGenerateOnUpdate()
-
---local KEY_CTRL = GLOBAL.KEY_CTRL
+local PlacerUpdate = require(DST and "placer/together" or (
+        IsDLCEnabled("CAPY_DLC") and "placer/capy" or "placer/vanilla"
+    ))
 
 local SEARCH_RADIUS, SNAP, ALIGN, EPSILON = 10, 0.5, 0.1, 0.001
 
@@ -61,7 +49,7 @@ local SNAP_INFO = {
     {AlignTo('twiggy_nut_sapling', 'twiggytree'), 'twiggy_nut_placer', 'twiggy_nut'},
     {AlignTo('marblebean_sapling', 'marbleshrub'), 'marblebean_placer', 'marblebean'},
     {AlignTo('moonbutterfly_sapling', 'moon_tree'), 'moonbutterfly_placer', 'moonbutterfly'},
-    
+
     -- Fires
     {AlignTo('campfire'), 'campfire_placer', 'campfire'},
     {AlignTo('coldfire'), 'coldfire_placer', 'coldfire'},
@@ -166,7 +154,7 @@ end
 local function UpdateHilightColors(inst, targets)
     RemoveHilightColors(inst)
     if targets then
-        for i, e in pairs(targets) do
+        for _, e in pairs(targets) do
             SetAddColor(e, TAERGET_COLOR)
         end
     end
@@ -246,10 +234,14 @@ local function Snap(placer, position)
     return to or position
 end
 
-AddComponentPostInit("playercontroller", controller.PostInit)
+-- AddComponentPostInit("playercontroller", controller.PostInit)
 
 AddComponentPostInit("placer", function(placer)
-    placer.OnUpdate = GenerateOnUpdate(Snap, controller.GetPlacerOffset)
+    controller.SetupFollower(placer)
+    placer.OnUpdate = function(self, dt)
+        PlacerUpdate(self, dt, Snap, controller)
+    end
+
     placer.inst:ListenForEvent("onremove", function()
         RemoveHilightColors(placer)
     end)
@@ -258,28 +250,31 @@ end)
 AddComponentPostInit("builder", function(builder)
     local CanBuildAtPoint, MakeRecipe = builder.CanBuildAtPoint, builder.MakeRecipe
 
-    function builder:CanBuildAtPoint(pt, recipe)
-        pt = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[recipe.name])
-        return CanBuildAtPoint(self, pt, recipe)
+    function builder:CanBuildAtPoint(pt, recipe, ...)
+        local filter = DEPLOYABLE_RECIPE_FILTERS[recipe.name]
+        local aligned = SnapToEntities(pt, filter)
+        return CanBuildAtPoint(self, aligned, recipe, ...)
     end
 
     function builder:MakeRecipe(recipe, pt, ...)
         local filter = DEPLOYABLE_RECIPE_FILTERS[recipe.name]
-        pt = SnapToEntities(pt, filter)
-        return MakeRecipe(self, recipe, pt, ...)
+        local aligned = SnapToEntities(pt, filter)
+        return MakeRecipe(self, recipe, aligned, ...)
     end
 end)
 
 AddComponentPostInit("deployable", function(deployable)
     local CanDeploy, Deploy = deployable.CanDeploy, deployable.Deploy
-    function deployable:CanDeploy(pt)
-        local aligned = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
-        return CanDeploy(self, aligned)
+    function deployable:CanDeploy(pt, ...)
+        local filter = DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab]
+        local aligned = SnapToEntities(pt, filter)
+        return CanDeploy(self, aligned, ...)
     end
 
-    function deployable:Deploy(pt, deployer)
-        local aligned = SnapToEntities(pt, DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab])
-        return Deploy(self, aligned, deployer)
+    function deployable:Deploy(pt, deployer, ...)
+        local filter = DEPLOYABLE_RECIPE_FILTERS[self.inst.prefab]
+        local aligned = SnapToEntities(pt, filter)
+        return Deploy(self, aligned, deployer, ...)
     end
 end)
 

@@ -4,115 +4,142 @@ local OFFSET_SPEED = 0.25
 
 local _M = {}
 
-local CancelControllerTargetWhenPlacing = function(self, dt)
-    if self.placer ~= nil or (self.deployplacer ~= nil and self.deploy_mode) then
-        self.controller_target = nil
-        self.controller_target_delay = 0.5
-        return
-    end
-end
-
 local InputMeta = getmetatable(TheInput).__index
 local OnControl = InputMeta.OnControl
 local IsControlPressed = InputMeta.IsControlPressed
 
-local function isInventoryControl(ctrl)
-	return ctrl == CONTROL_INVENTORY_LEFT or ctrl == CONTROL_INVENTORY_RIGHT or ctrl == CONTROL_INVENTORY_UP or ctrl == CONTROL_INVENTORY_DOWN
+local InventoryControls = {
+    [CONTROL_INVENTORY_LEFT] = true,
+    [CONTROL_INVENTORY_RIGHT] = true,
+    [CONTROL_INVENTORY_UP] = true,
+    [CONTROL_INVENTORY_DOWN] = true,
+}
+
+local function IsInventoryControl(control)
+    return InventoryControls[control]
+end
+
+local function GetPlayerController()
+    return ThePlayer and ThePlayer.components.playercontroller
+end
+
+
+local function IsPlacerEnabled()
+    local controller = GetPlayerController()
+    return controller and (controller.placer or (controller.deploy_mode and controller.deployplacer))
 end
 
 InputMeta.IsControlPressed = function(self, control, e, ...)
-	if e then --not efficient, i know.
-		return iscontrolpressed_old(self, control, e, ...)
-	end
-	local controller = ThePlayer and ThePlayer.components.playercontroller
-	if isInventoryControl(control) and controller and (controller.placer or (controller.deploy_mode and controller.deployplacer)) then
-		return false
+    if e then
+        return IsControlPressed(self, control, e, ...)
+    end
+    if IsInventoryControl(control) and IsPlacerEnabled() then
+        return false
     end
     return IsControlPressed(self, control, e, ...)
 end
 
 InputMeta.OnControl = function(self, control, ...)
-	--70 is the mod (menu misc 3)
-	local controller = ThePlayer and ThePlayer.components.playercontroller
-	if controller and controller.placer and isInventoryControl(control) then
-		return
+    if IsPlacerEnabled() and IsInventoryControl(control) then
+        return
     end
-	OnControl(self, control, ...)
+    OnControl(self, control, ...)
 end
 
-function _M.PostInit(self)
-	self.placer_parent = CreateEntity()
-	self.placer_parent.entity:AddTransform() self.placer_parent:AddTag("FX") self.placer_parent:AddTag("CLASSIFIED") self.placer_parent.entity:SetCanSleep(false)
-	self.placer_parent:DoPeriodicTask(0, function(inst)
-		if ThePlayer ~= nil and inst.move then inst.Transform:SetPosition(ThePlayer.Transform:GetWorldPosition()) end
-    end)
 
-    local UpdateControllerTargets = self.UpdateControllerTargets
-	self.UpdateControllerTargets = function(self, dt, ...)
-		UpdateControllerTargets(self, dt, ...)
-		CancelControllerTargetWhenPlacing(self, dt)
+function _M.SetupFollower(placer)
+    if not TheInput:ControllerAttached() then
+        return
     end
 
-	local StartBuildPlacementMode = self.StartBuildPlacementMode
-	self.StartBuildPlacementMode = function(...)
-		StartBuildPlacementMode(...)
-		if TheInput:ControllerAttached() then
-			self.placer_parent:AddChild(self.placer)
-            self.placer.Transform:SetPosition(0,0,0)
-            self.placer_parent.move = not self.placer.onground and not self.placer.snap_to_meters
-		end
-    end
+    local follower = CreateEntity() -- follower entity follows player position.
+    follower.entity:AddTransform()
+    follower:AddTag("FX")
+    follower:AddTag("CLASSIFIED")
+    follower.entity:SetCanSleep(false)
+
+    placer.controller_offset = Vector3(placer.offset,0,0)
+
+    follower:AddChild(placer.inst)
+    placer.follower = follower
+    placer.inst.Transform:SetPosition(placer.offset,0,0)
 end
 
--- self: the placer component
-function _M.GetPlacerOffset(placer, dt)
-    local self = placer
-    local input = TheInput
-    -- only runs when controller is enabled
-    if not input:ControllerAttached() then return Vector3(0, 0, 0) end
 
-    if not self._printed then
-        print(self.inst.prefab, "snap_to_tile=", self.snap_to_tile, "snap_to_meters=",self.snap_to_meters, "onground=", self.onground)
-        self._printed = true
+local function GetContorllerInputPosition(placer)
+    return Vector3(ThePlayer.Transform:GetWorldPosition()) + placer.controller_offset
+end
+
+local function GetPlacerAlignedPosition(placer, pos, snapFn)
+    if placer.snap_to_tile then
+        return Vector3(TheWorld.Map:GetTileCenterPoint(pos:Get()))
     end
 
-    local placer_parent = ThePlayer.components.playercontroller.placer_parent
-    if self.inst.parent ~= placer_parent then 
-        placer_parent:AddChild(self.inst)
+    if placer.snap_to_meters then
+        return Vector3(math.floor(pos.x) + .5, 0, math.floor(pos.z) + .5)
     end
 
-    placer_parent.move = not self.snap_to_meters
+    if placer.onground then
+        return snapFn(placer, pos)
+    end
 
-    self.controller_offset = self.controller_offset or Vector3(0, 0, 0)
+    return snapFn(placer, pos)
+end
 
-    local xdir = input:GetAnalogControlValue(CONTROL_INVENTORY_RIGHT) - input:GetAnalogControlValue(CONTROL_INVENTORY_LEFT)
-    local ydir = input:GetAnalogControlValue(CONTROL_INVENTORY_UP) - input:GetAnalogControlValue(CONTROL_INVENTORY_DOWN)
+local function UpdateControllerOffset(placer, dt)
+    local xdir = TheInput:GetAnalogControlValue(CONTROL_INVENTORY_RIGHT) - TheInput:GetAnalogControlValue(CONTROL_INVENTORY_LEFT)
+    local ydir = TheInput:GetAnalogControlValue(CONTROL_INVENTORY_UP) - TheInput:GetAnalogControlValue(CONTROL_INVENTORY_DOWN)
 
     if math.abs(xdir) > DEADZONE or math.abs(ydir) > DEADZONE then
-        local offset = self.controller_offset
+        local offset = placer.controller_offset
         local camera = TheCamera or GetCamera()
-        local dir = (camera:GetRightVec() * xdir - camera:GetDownVec() * ydir) * self.speed_mult
+        local dir = (camera:GetRightVec() * xdir - camera:GetDownVec() * ydir) * placer.speed_mult
         --dir = dir:GetNormalized()
-        if not self.snap_to_meters then
-            self.controller_offset = offset+dir
-        elseif GetTime() - (self.meters_move_time or 0) > 0.1 then
+        if not placer.snap_to_meters then
+            placer.controller_offset = offset+dir
+        elseif GetTime() - (placer.meters_move_time or 0) > 0.1 then
             dir = dir:GetNormalized()
             if math.abs(dir.x) > math.abs(dir.z) then
-                self.controller_offset.x = self.controller_offset.x + dir.x
+                placer.controller_offset.x = placer.controller_offset.x + dir.x
             else
-                self.controller_offset.z = self.controller_offset.z + dir.z
+                placer.controller_offset.z = placer.controller_offset.z + dir.z
             end
-            self.meters_move_time = GetTime()
+            placer.meters_move_time = GetTime()
         end
-        if self.speed_mult > 1 then 
-            self.speed_mult = 1 
+        if placer.speed_mult > 1 then
+            placer.speed_mult = 1
         else
-            self.speed_mult = self.speed_mult + (self.speed_mult*OFFSET_SPEED*dt)
+            placer.speed_mult = placer.speed_mult + (placer.speed_mult*OFFSET_SPEED*dt)
         end
     else -- reset speed
-        self.speed_mult = 0.025
+        placer.speed_mult = 0.025
     end
-    return self.controller_offset
+end
+
+-- Update the placer follower position to player's
+local function UpdateFollowerPosition(placer)
+    placer.follower.Transform:SetPosition(ThePlayer.Transform:GetWorldPosition())
+end
+
+local function UpdatePlacerLocalPosition(placer, snapFn)
+    local pos = GetContorllerInputPosition(placer)
+    local aligned = GetPlacerAlignedPosition(placer, pos, snapFn)
+    local followerPos = Vector3(placer.follower.Transform:GetWorldPosition())
+    local relative = aligned - followerPos
+
+    placer.inst.Transform:SetPosition(relative:Get())
+end
+
+function _M.Update(placer, dt, snapFn)
+    if not TheInput:ControllerAttached() then
+        return
+    end
+
+    UpdateFollowerPosition(placer)
+
+    UpdateControllerOffset(placer, dt)
+
+    UpdatePlacerLocalPosition(placer, snapFn)
 end
 
 return _M

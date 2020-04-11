@@ -3,8 +3,8 @@ description = 'Help align to already planted/built/deployed same items. 帮助�
 author = 'xpolife'
 version = '2.2.0'
 
-icon_atlas = "AlignedPlacement.xml"
-icon = "AlignedPlacement.tex"
+icon_atlas = 'AlignedPlacement.xml'
+icon = 'AlignedPlacement.tex'
 
 forumthread = ''
 
@@ -18,3 +18,16 @@ dst_compatible = true
 api_version_dst = 10
 client_only_mod = true
 all_clients_require_mod = false
+
+configuration_options = {
+    {
+        name = 'ALIGN_DIFFERENT_OBJECTS',
+        label = 'Align different object 对齐不同的物品',
+        hover = 'Allow align to a different kind of object 允许对齐到不同的物品',
+        options = {
+            {description = 'No', data = false},
+            {description = 'Yes', data = true},
+        },
+        default = false,
+    },
+}

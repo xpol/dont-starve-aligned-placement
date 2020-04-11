@@ -1,7 +1,7 @@
 name = 'Aligned Placement 对齐建造'
 description = 'Help align to already planted/built/deployed same items. 帮助对齐到已经种植、建造、部署的相同物品。支持手柄和鼠标！'
 author = 'xpolife'
-version = '2.1.0'
+version = '2.2.0'
 
 icon_atlas = "AlignedPlacement.xml"
 icon = "AlignedPlacement.tex"

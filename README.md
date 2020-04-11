@@ -74,7 +74,6 @@ Now support controllers.
 - 蜜蜂炸弹 beemine
 - 眼球雷射塔 eyeturret
 
-
 ## 注意事项 Notice
 
 这个插件修改了placer，因此不能与其他Placer插件共存， 比如：
@@ -83,7 +82,7 @@ This mod modifies the placer, and thus conflicts with other placer mods. Eg.
 - Assisted Geometry
 - Architectural Geometry
 - Geometric Placement
-- Extra Controller Features
+- Extra Controller Features (关掉 placer 功能应该可以共存，Should work if disable the placer feature)
 
 ## 如何请求添加更多支持到物品 How to Request more supported items
 

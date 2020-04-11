@@ -39,7 +39,7 @@ globals = {
   'Vector3',
 }
 
-files['modinfo.lua'].globals = {
+files['mod/modinfo.lua'].globals = {
   'name',
   'version',
   'description',
@@ -53,4 +53,10 @@ files['modinfo.lua'].globals = {
   'shipwrecked_compatible',
   'dst_compatible',
   'configuration_options',
+}
+
+files["spec/**/*_spec.lua"].globals = {
+  "assert",
+  "describe",
+  "it",
 }

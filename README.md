@@ -6,9 +6,11 @@
 
 When you try to plant/build/deploy something on the ground, this mod helps the placer cursor align to the same items already placed.
 
-现在支持控制器了。
+## 功能更新 Updates
 
-Now support controllers.
+- 现在添加了选项可以对齐不同的物品（全部支持的）。Now added options to allow align to different objects.
+- 支持几乎所有的建筑物。Now support almost all structures.
+- 现在支持控制器了。Now support controllers.
 
 ## 目前支持对齐到物品 Supported items
 
@@ -66,6 +68,34 @@ Now support controllers.
 - 呆龙巢穴 dragoonden (SW)
 - 盐盒 saltbox
 - 友善的稻草人 scarecrow
+- 陶轮 sculptingtable
+- 龙鳞火炉 dragonflyfurnace
+- 衣柜 wardrobe
+- 科学引擎 researchlab
+- 炼金引擎 researchlab2
+- 暗影操控器 researchlab3
+- 灵子分解器 researchlab4
+- 强征传送塔 townportal
+- 温度计 winterometer
+- 雨量计 rainometer
+- 传送焦点 telebase
+- 制图桌 cartographydesk
+- 火鸡神龛 perdshrine
+- 座狼神龛 wargshrine
+- 猪神龛 pigshrine
+- 胡萝卜鼠神龛 yotc_carratshrine
+- 一般茶几 endtable
+- 智囊团 seafaring_prototyper
+- 月晷 moondial
+- 侦查守卫 sentryward
+- 帐篷 tent
+- 凉棚 siestahut
+- 锡鱼桶 fish_box
+- 钓具容器 tacklestation
+- 鱼类计重器 trophyscale_fish
+- 蘑菇灯 mushroom_light
+- 织菇灯 mushroom_light2
+- 舔舔盐块 saltlick
 
 ### 陷阱 Traps
 

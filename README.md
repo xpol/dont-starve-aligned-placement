@@ -6,6 +6,8 @@
 
 When you try to plant/build/deploy something on the ground, this mod helps the placer cursor align to the same items already placed.
 
+具体用法见工作坊视频。 See the workshop video for how to use the mod.
+
 ## 功能更新 Updates
 
 - 现在添加了选项可以对齐不同的物品（全部支持的）。Now added options to allow align to different objects.

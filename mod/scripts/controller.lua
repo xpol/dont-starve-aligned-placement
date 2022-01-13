@@ -1,6 +1,8 @@
 -- Outside of modmain, we are in GLOBAL environment.
 local DEADZONE = 0.3
 local OFFSET_SPEED = 0.25
+local MIN_SPEED = 0.025
+local MAX_SPEED = 1
 
 local _M = {}
 
@@ -93,7 +95,8 @@ local function UpdateControllerOffset(placer, dt)
     if math.abs(xdir) > DEADZONE or math.abs(ydir) > DEADZONE then
         local offset = placer.controller_offset
         local camera = TheCamera or GetCamera()
-        local dir = (camera:GetRightVec() * xdir - camera:GetDownVec() * ydir) * placer.speed_mult
+        local speed_mult = placer.speed_mult or MIN_SPEED
+        local dir = (camera:GetRightVec() * xdir - camera:GetDownVec() * ydir) * speed_mult
         --dir = dir:GetNormalized()
         if not placer.snap_to_meters then
             placer.controller_offset = offset+dir
@@ -106,13 +109,13 @@ local function UpdateControllerOffset(placer, dt)
             end
             placer.meters_move_time = GetTime()
         end
-        if placer.speed_mult > 1 then
-            placer.speed_mult = 1
+        if placer.speed_mult > MAX_SPEED then
+            placer.speed_mult = MAX_SPEED
         else
             placer.speed_mult = placer.speed_mult + (placer.speed_mult*OFFSET_SPEED*dt)
         end
     else -- reset speed
-        placer.speed_mult = 0.025
+        placer.speed_mult = MIN_SPEED
     end
 end
 

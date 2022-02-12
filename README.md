@@ -28,6 +28,8 @@ When you try to plant/build/deploy something on the ground, this mod helps the p
 - dug_bush_vine
 - 蝴蝶 （对齐到花花） butterfly
 - 石树 dug_rock_avocado_bush
+- dug_trap_starfish
+- 公牛海带茎 bullkelp_root
 
 ### 树（也会对齐到长大的树）Trees (also align to grownup trees)
 
@@ -98,6 +100,37 @@ When you try to plant/build/deploy something on the ground, this mod helps the p
 - 蘑菇灯 mushroom_light
 - 织菇灯 mushroom_light2
 - 舔舔盐块 saltlick
+- arrowsign_post
+- beefalo_groomer_item
+- compostingbin
+- madscience_lab
+- meatrack
+- mermhouse_crafted
+- mermthrone_construction
+- mermwatchtower
+- mighty_gym
+- moon_device_construction1
+- nightlight
+- ruinsrelic_bowl
+- ruinsrelic_chair
+- ruinsrelic_chipbowl
+- ruinsrelic_plate
+- ruinsrelic_table
+- ruinsrelic_vase
+- sisturn
+- table_winters_feast
+- trophyscale_oversizedveggies
+- turfcraftingstation
+- waterpump
+- winch
+- winona_battery_high
+- winona_battery_low
+- winona_catapult
+- winona_spotlight
+- winter_treestand
+- wintersfeastoven
+- yot_catcoonshrine
+- yotb_beefaloshrine
 
 ### 陷阱 Traps
 

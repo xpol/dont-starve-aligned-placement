@@ -35,6 +35,8 @@ local SupportedPrefabs = {
     {'pottedfern', 'pottedfern_placer', {'pottedfern'}},
     {'succulent_potted', 'succulent_potted_placer', {'succulent_potted'}},
     {'dug_marsh_bush', 'dug_marsh_bush_placer', {'marsh_bush'}},
+    {'dug_trap_starfish', 'dug_trap_starfish_placer', {'trap_starfish'}},
+    {'bullkelp_root', 'bullkelp_root_placer', {'bullkelp_plant'}},
 
     -- Trees
     {'pinecone', 'pinecone_placer', {'pinecone_sapling', 'evergreen'}},
@@ -43,7 +45,7 @@ local SupportedPrefabs = {
     {'marblebean', 'marblebean_placer', {'marblebean_sapling', 'marbleshrub'}},
     {'moonbutterfly', 'moonbutterfly_placer', {'moonbutterfly_sapling', 'moon_tree'}},
 
-    --Structures
+    --Structures (Search `_placer` in scripts/recipes.lua)
     {'birdcage', 'birdcage_placer', {'birdcage'}},
     {'beebox', 'beebox_placer', {'beebox'}},
     {'icebox', 'icebox_placer', {'icebox'}},
@@ -87,6 +89,37 @@ local SupportedPrefabs = {
     {'mushroom_light2', 'mushroom_light2_placer', {'mushroom_light2'}},
     {'saltlick', 'saltlick_placer', {'saltlick'}},
     {'cellar', 'cellar_placer', {'cellar'}}, -- MOD: DST Storm Cellar
+    {'arrowsign_post', 'arrowsign_post_placer', {'arrowsign_post'}},
+    {'beefalo_groomer_item', 'beefalo_groomer_item_placer', {'beefalo_groomer_item'}},
+    {'compostingbin', 'compostingbin_placer', {'compostingbin'}},
+    {'madscience_lab', 'madscience_lab_placer', {'madscience_lab'}},
+    {'meatrack', 'meatrack_placer', {'meatrack'}},
+    {'mermhouse_crafted', 'mermhouse_crafted_placer', {'mermhouse_crafted'}},
+    {'mermthrone_construction', 'mermthrone_construction_placer', {'mermthrone_construction'}},
+    {'mermwatchtower', 'mermwatchtower_placer', {'mermwatchtower'}},
+    {'mighty_gym', 'mighty_gym_placer', {'mighty_gym'}},
+    {'moon_device_construction1', 'moon_device_construction1_placer', {'moon_device_construction1'}},
+    {'nightlight', 'nightlight_placer', {'nightlight'}},
+    {'ruinsrelic_bowl', 'ruinsrelic_bowl_placer', {'ruinsrelic_bowl'}},
+    {'ruinsrelic_chair', 'ruinsrelic_chair_placer', {'ruinsrelic_chair'}},
+    {'ruinsrelic_chipbowl', 'ruinsrelic_chipbowl_placer', {'ruinsrelic_chipbowl'}},
+    {'ruinsrelic_plate', 'ruinsrelic_plate_placer', {'ruinsrelic_plate'}},
+    {'ruinsrelic_table', 'ruinsrelic_table_placer', {'ruinsrelic_table'}},
+    {'ruinsrelic_vase', 'ruinsrelic_vase_placer', {'ruinsrelic_vase'}},
+    {'sisturn', 'sisturn_placer', {'sisturn'}},
+    {'table_winters_feast', 'table_winters_feast_placer', {'table_winters_feast'}},
+    {'trophyscale_oversizedveggies', 'trophyscale_oversizedveggies_placer', {'trophyscale_oversizedveggies'}},
+    {'turfcraftingstation', 'turfcraftingstation_placer', {'turfcraftingstation'}},
+    {'waterpump', 'waterpump_placer', {'waterpump'}},
+    {'winch', 'winch_placer', {'winch'}},
+    {'winona_battery_high', 'winona_battery_high_placer', {'winona_battery_high'}},
+    {'winona_battery_low', 'winona_battery_low_placer', {'winona_battery_low'}},
+    {'winona_catapult', 'winona_catapult_placer', {'winona_catapult'}},
+    {'winona_spotlight', 'winona_spotlight_placer', {'winona_spotlight'}},
+    {'winter_treestand', 'winter_treestand_placer', {'winter_treestand'}},
+    {'wintersfeastoven', 'wintersfeastoven_placer', {'wintersfeastoven'}},
+    {'yot_catcoonshrine', 'yot_catcoonshrine_placer', {'yot_catcoonshrine'}},
+    {'yotb_beefaloshrine', 'yotb_beefaloshrine_placer', {'yotb_beefaloshrine'}},
 
     -- Fires
     {'campfire', 'campfire_placer', {'campfire'}},

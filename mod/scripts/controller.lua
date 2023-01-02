@@ -96,6 +96,11 @@ local function UpdateControllerOffset(placer, dt)
         local offset = placer.controller_offset
         local camera = TheCamera or GetCamera()
         local speed_mult = placer.speed_mult or MIN_SPEED
+        if speed_mult > MAX_SPEED then
+            placer.speed_mult = MAX_SPEED
+        else
+            placer.speed_mult = speed_mult + (speed_mult*OFFSET_SPEED*dt)
+        end
         local dir = (camera:GetRightVec() * xdir - camera:GetDownVec() * ydir) * speed_mult
         --dir = dir:GetNormalized()
         if not placer.snap_to_meters then
@@ -108,11 +113,6 @@ local function UpdateControllerOffset(placer, dt)
                 placer.controller_offset.z = placer.controller_offset.z + dir.z
             end
             placer.meters_move_time = GetTime()
-        end
-        if placer.speed_mult > MAX_SPEED then
-            placer.speed_mult = MAX_SPEED
-        else
-            placer.speed_mult = placer.speed_mult + (placer.speed_mult*OFFSET_SPEED*dt)
         end
     else -- reset speed
         placer.speed_mult = MIN_SPEED

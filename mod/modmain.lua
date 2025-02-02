@@ -37,6 +37,8 @@ local SupportedPrefabs = {
     {'dug_marsh_bush', 'dug_marsh_bush_placer', {'marsh_bush'}},
     {'dug_trap_starfish', 'dug_trap_starfish_placer', {'trap_starfish'}},
     {'bullkelp_root', 'bullkelp_root_placer', {'bullkelp_plant'}},
+    {'dug_bananabush', 'dug_bananabush_placer', {'bananabush'}},
+    {'dug_monkeytail', 'dug_monkeytail_placer', {'monkeytail'}},
 
     -- Trees
     {'pinecone', 'pinecone_placer', {'pinecone_sapling', 'evergreen'}},
@@ -44,6 +46,7 @@ local SupportedPrefabs = {
     {'twiggy_nut', 'twiggy_nut_placer', {'twiggy_nut_sapling', 'twiggytree'}},
     {'marblebean', 'marblebean_placer', {'marblebean_sapling', 'marbleshrub'}},
     {'moonbutterfly', 'moonbutterfly_placer', {'moonbutterfly_sapling', 'moon_tree'}},
+    {'palmcone_seed', 'palmcone_seed_placer', {'palmconetree', 'palmconetree_short', 'palmconetree_normal', 'palmconetree_tall'}},
 
     --Structures (Search `_placer` in scripts/recipes.lua)
     {'birdcage', 'birdcage_placer', {'birdcage'}},

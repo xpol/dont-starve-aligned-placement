@@ -101,7 +101,6 @@ local SupportedPrefabs = {
     {'mermthrone_construction', 'mermthrone_construction_placer', {'mermthrone_construction'}},
     {'mermwatchtower', 'mermwatchtower_placer', {'mermwatchtower'}},
     {'mighty_gym', 'mighty_gym_placer', {'mighty_gym'}},
-    {'moon_device_construction1', 'moon_device_construction1_placer', {'moon_device_construction1'}},
     {'nightlight', 'nightlight_placer', {'nightlight'}},
     {'ruinsrelic_bowl', 'ruinsrelic_bowl_placer', {'ruinsrelic_bowl'}},
     {'ruinsrelic_chair', 'ruinsrelic_chair_placer', {'ruinsrelic_chair'}},

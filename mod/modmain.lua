@@ -47,6 +47,7 @@ local SupportedPrefabs = {
     {'marblebean', 'marblebean_placer', {'marblebean_sapling', 'marbleshrub'}},
     {'moonbutterfly', 'moonbutterfly_placer', {'moonbutterfly_sapling', 'moon_tree'}},
     {'palmcone_seed', 'palmcone_seed_placer', {'palmconetree', 'palmconetree_short', 'palmconetree_normal', 'palmconetree_tall'}},
+    {'ancienttree_seed', 'ancienttree_seed_placer', {'ancienttree_gem_sapling', 'ancienttree_nightvision_sapling'}},
 
     --Structures (Search `_placer` in scripts/recipes.lua)
     {'birdcage', 'birdcage_placer', {'birdcage'}},

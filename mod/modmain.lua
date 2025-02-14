@@ -123,6 +123,9 @@ local SupportedPrefabs = {
     {'wintersfeastoven', 'wintersfeastoven_placer', {'wintersfeastoven'}},
     {'yot_catcoonshrine', 'yot_catcoonshrine_placer', {'yot_catcoonshrine'}},
     {'yotb_beefaloshrine', 'yotb_beefaloshrine_placer', {'yotb_beefaloshrine'}},
+    {'carpentry_station', 'carpentry_station_placer', {'carpentry_station'}},
+    {'lunar_forge_kit', 'lunar_forge_kit_placer', {'lunar_forge'}},
+    {'shadow_forge_kit', 'shadow_forge_kit_placer', {'shadow_forge'}},
 
     -- Fires
     {'campfire', 'campfire_placer', {'campfire'}},
@@ -147,6 +150,16 @@ local SupportedPrefabs = {
     {'trap_bramble', 'trap_bramble_placer', {'trap_bramble'}},
     {'beemine', 'beemine_placer', {'beemine'}},
     {'eyeturret_item', 'eyeturret_item_placer', {'eyeturret'}},
+
+    -- Carpentry
+    {'wood_chair', 'wood_chair_placer', {'wood_chair'}},
+    {'wood_stool', 'wood_stool_placer', {'wood_stool'}},
+    {'wood_table_round', 'wood_table_round_placer', {'wood_table_round'}},
+    {'wood_table_square', 'wood_table_square_placer', {'wood_table_square'}},
+    {'stone_chair', 'stone_chair_placer', {'stone_chair'}},
+    {'stone_stool', 'stone_stool_placer', {'stone_stool'}},
+    {'stone_table_round', 'stone_table_round_placer', {'stone_table_round'}},
+    {'stone_table_square', 'stone_table_square_placer', {'stone_table_square'}},
 }
 
 
